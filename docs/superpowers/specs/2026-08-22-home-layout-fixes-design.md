@@ -407,3 +407,73 @@ Isolate instead:
 2. Check the tab bar and the button independently. §1 was right that item 4 lives in
    a different component; they may still be two bugs with two causes, and a shared
    symptom has already misled this document once.
+
+---
+
+## 10. Revision — 2026-08-22, third report
+
+A new device report arrived with the same three symptoms: `Pla`, bare `Daily`,
+`Librar`.
+
+### Which build produced it
+
+The symptoms match §9's *intermediate* state exactly — `Daily Puzzle` wrapping to
+bare `Daily` requires the half-width two-tile row that `3b2b56a` deleted, and the
+complaint that the Daily tile should "align with Play" describes a layout where it
+does not share Play's edges, which the full-width tile has done since `3b2b56a`.
+So the likeliest explanation is that **the installed APK predates `3b2b56a`** and no
+third clipping mechanism needs inventing yet. §9's changes may be fine; they have
+simply never been seen on hardware.
+
+That suspicion is recorded rather than acted on alone, because it cannot be verified
+from here — and because reading the current code turned up one real defect that
+survives regardless of which build was installed:
+
+### The defect: fixed `lineHeight` around an auto-scaled font
+
+Android scales a `Text` node's `fontSize` with the system font scale. An explicit
+`lineHeight` does **not** scale. Every label touched by this document sets an
+explicit line box, so on a device whose font size setting is raised even one notch,
+the glyphs grow and the box does not — the exact vertical clip §9 diagnosed, reintroduced
+by an accessibility setting rather than by the layout.
+
+The fix scales each line box by `fontScale`, so the ratio between them is constant at
+every setting. This is accessibility-preserving by construction; capping
+`maxFontSizeMultiplier` was rejected for exactly this reason in §3's table and stays
+rejected. No fixed number was retuned in the process — per §9's own rule, more padding
+without device evidence would be guessing twice.
+
+### Splash: down to one animation
+
+§9 left the loading screen running two animations: the wordmark's spring-in and the
+dot pulse. The report asked for one popup animation removed and one kept. The
+wordmark's spring (`springs.pop`) is the popup; it now renders statically. The dot
+wave is the one animation that remains — it is also the only one that can stay smooth
+while the JS thread opens SQLite, which is the entire point of animating a loader.
+The fade-out handoff is unchanged; it is how the screen leaves, not something it does.
+
+### Files changed
+
+| File | Change |
+| --- | --- |
+| `src/shared/ui/LoadingScreen.tsx` | Wordmark spring-in removed; dots are the only animation |
+| `src/shared/ui/PopButton.tsx` | Label `lineHeight` scaled by system `fontScale` |
+| `src/shared/ui/PopTabBar.tsx` | Tab-label `lineHeight` scaled by system `fontScale` |
+| `src/features/home/home-screen.tsx` | Quick-link label `lineHeight` scaled by system `fontScale` |
+
+### Verification
+
+| Check | Status |
+| --- | --- |
+| `npm run typecheck` | clean |
+| `npm run lint` | clean |
+| `npm run format:check:src` | clean |
+| `npm test` | 196 passed, 26 suites |
+| Device pass | pending — must be run against a build of **this** commit |
+
+### What the next report must state
+
+If letters are missing after installing a build of this commit, say so explicitly and
+include the phone's **font size setting** (Settings → Display → Font size) — the first
+useful isolation step is whether the failure tracks that setting, which no report so
+far has mentioned.
