@@ -8,11 +8,10 @@ import Animated, {
   withDelay,
   withRepeat,
   withSequence,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
-import { backgrounds, colors, motion, springs, typography } from '@/shared/theme';
+import { backgrounds, colors, motion, typography } from '@/shared/theme';
 
 import { Art } from './Art';
 import { WordmarkTitle } from './WordmarkTitle';
@@ -62,13 +61,7 @@ export function LoadingScreen({ onDone, ready = true }: LoadingScreenProps) {
   // small one, but never grows past the size the @3x art can carry.
   const bearSize = Math.min(width * 0.52, 240);
 
-  const intro = useSharedValue(0);
   const fade = useSharedValue(1);
-
-  useEffect(() => {
-    // The wordmark rises into place once, via a spring that overshoots slightly.
-    intro.value = withSpring(1, springs.pop);
-  }, [intro]);
 
   useEffect(() => {
     if (!ready) {
@@ -89,21 +82,17 @@ export function LoadingScreen({ onDone, ready = true }: LoadingScreenProps) {
   const overlayStyle = useAnimatedStyle(() => ({ opacity: fade.value }));
 
   /*
-   * The bear does not animate at all — it is already on screen and it stays put.
+   * Neither the bear nor the wordmark animates — the dots carry the whole
+   * "something is happening" signal.
    *
-   * Android shows its splash window from the moment the icon is tapped until RN has
-   * a frame, and that window carries this same bear, centred. So this bear is a
-   * continuation of one already being displayed, not an entrance: rising or scaling
-   * it here would make the handoff read as a second screen appearing.
-   *
-   * It used to breathe — a 14pt bob with a 3.5° sway — which was removed on request.
-   * The pulsing dots below now carry the whole "something is happening" signal, and
-   * the wordmark still rises in.
+   * The bear is already on screen and it stays put. Android shows its splash
+   * window from the moment the icon is tapped until RN has a frame, and that
+   * window carries this same bear, centred. So this bear is a continuation of one
+   * already being displayed, not an entrance: rising or scaling it here would make
+   * the handoff read as a second screen appearing. It used to breathe, and the
+   * wordmark used to spring in below it — both removed on request, so the loader
+   * runs exactly one animation: the pulsing dot row.
    */
-  const wordmarkStyle = useAnimatedStyle(() => ({
-    opacity: intro.value,
-    transform: [{ translateY: (1 - intro.value) * 18 }],
-  }));
 
   return (
     <Animated.View
@@ -126,9 +115,9 @@ export function LoadingScreen({ onDone, ready = true }: LoadingScreenProps) {
           or resizing anything here can never shift the bear off the native
           splash's position again. */}
       <View style={[styles.below, { top: '50%', marginTop: bearSize / 2 }]} pointerEvents="none">
-        <Animated.View style={[styles.wordmark, wordmarkStyle]}>
+        <View style={styles.wordmark}>
           <WordmarkTitle scale={0.62} />
-        </Animated.View>
+        </View>
 
         <View style={styles.dots} accessibilityRole="progressbar" accessibilityLabel="Loading">
           {Array.from({ length: DOT_COUNT }, (_, index) => (
