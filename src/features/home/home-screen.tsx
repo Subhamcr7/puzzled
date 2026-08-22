@@ -13,7 +13,9 @@ import {
   IdleBob,
   PopButton,
   PopSurface,
+  PressDarken,
   WordmarkTitle,
+  usePressProgress,
   useTabBarSpace,
 } from '@/shared/ui';
 
@@ -117,7 +119,7 @@ export function HomeScreen() {
           <EnterView index={2} style={styles.actions}>
             <PopButton
               label="Play"
-              tone="grass"
+              tone="lime"
               size="lg"
               icon={<Art name="play" size={28} />}
               style={styles.fullWidth}
@@ -148,25 +150,31 @@ export function HomeScreen() {
 }
 
 function QuickLink({ art, label, onPress }: { art: ArtName; label: string; onPress: () => void }) {
+  const { progress, pressHandlers } = usePressProgress();
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
+      {...pressHandlers}
       style={styles.quickLink}
     >
       <PopSurface fill={colors.surface} radius={radii.md}>
+        {/* Icon above the label, not beside it. Side by side, the fixed 30pt icon
+            and its gap took 38 of the tile's ~148pt and the label got what was
+            left — enough for "Daily Puzzle" at rest, but not once the system font
+            scale rose above about 1.2x, because the text scales and the icon does
+            not. It then ellipsised to "Daily Puz…". Stacking hands the label the
+            tile's full width, so the words fit with room to spare.
+
+            No `numberOfLines` either: unbounded, an extreme font scale wraps the
+            label onto a second line, which still shows every letter. That is the
+            point — a cut word tells the reader nothing. */}
         <View style={styles.quickLinkInner}>
+          <PressDarken progress={progress} radius={radii.md} />
           <Art name={art} size={30} />
-          {/* `numberOfLines` with a shrinkable style, or the label loses letters.
-              `PopSurface`'s face clips (`overflow: 'hidden'`), and an unshrinkable
-              `Text` in a centred row overflows that face rather than narrowing — so
-              when the label does not fit, the ends are simply cut off with nothing to
-              show for it. Shrinking degrades to an ellipsis instead, which is legible
-              and obviously deliberate. */}
-          <Text style={styles.quickLinkLabel} numberOfLines={1}>
-            {label}
-          </Text>
+          <Text style={styles.quickLinkLabel}>{label}</Text>
         </View>
       </PopSurface>
     </Pressable>
@@ -218,12 +226,19 @@ const styles = StyleSheet.create({
   quickRow: { flexDirection: 'row', gap: spacing.md, alignSelf: 'stretch' },
   quickLink: { flex: 1 },
   quickLinkInner: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs,
     paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
-  // `flexShrink` so the label gives way before the clipping face does — see QuickLink.
-  quickLinkLabel: { ...typography.bodyStrong, fontSize: 14, color: colors.ink, flexShrink: 1 },
+  // `paddingHorizontal` is ink room for the trailing glyph, as on `PopButton` — see
+  // the note on its `label` style. `textAlign` because the label may wrap.
+  quickLinkLabel: {
+    ...typography.bodyStrong,
+    fontSize: 14,
+    color: colors.ink,
+    paddingHorizontal: 2,
+    textAlign: 'center',
+  },
 });

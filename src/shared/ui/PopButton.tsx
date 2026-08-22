@@ -1,11 +1,22 @@
 import { type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 
-import { colors, radii, shadow, spacing, springs, typography } from '@/shared/theme';
+import { colors, radii, shadow, spacing, typography } from '@/shared/theme';
+
+import { PressDarken, usePressProgress } from './PressDarken';
 
 export type PopTone =
-  'grass' | 'leaf' | 'sky' | 'berry' | 'blossom' | 'honey' | 'apricot' | 'cherry' | 'surface';
+  | 'grass'
+  | 'lime'
+  | 'leaf'
+  | 'sky'
+  | 'berry'
+  | 'blossom'
+  | 'honey'
+  | 'apricot'
+  | 'cherry'
+  | 'surface';
 
 /**
  * Button faces, paired with the label colour that clears WCAG AA large-text
@@ -16,9 +27,14 @@ export type PopTone =
  * mockup's own white-on-green measures 2.21:1. Tones that want white therefore
  * use their `*Deep` variant; everything else takes ink on the bright value.
  * Verified ratios are in the trailing comments.
+ *
+ * For a gradient tone this is the mid stop, which is also what the face falls back
+ * to if the gradient does not apply. `TONE_GRADIENT` carries the rest, and the
+ * contrast test walks every stop rather than trusting this one value.
  */
 export const TONE_FILL: Record<PopTone, string> = {
   grass: colors.grassDeep,
+  lime: colors.lime,
   leaf: colors.leaf,
   sky: colors.skyDeep,
   berry: colors.berry,
@@ -31,6 +47,7 @@ export const TONE_FILL: Record<PopTone, string> = {
 
 export const TONE_LABEL: Record<PopTone, string> = {
   grass: colors.onFill, // 3.25
+  lime: colors.ink, // 8.79 / 7.18 / 3.67 across the gradient stops
   leaf: colors.ink, // 6.63
   sky: colors.onFill, // 3.21
   berry: colors.onFill, // 3.60
@@ -40,6 +57,28 @@ export const TONE_LABEL: Record<PopTone, string> = {
   cherry: colors.onFill, // 3.64
   surface: colors.ink, // 12.47
 };
+
+/**
+ * Tones whose face is a radial gradient rather than one flat colour, ordered from
+ * the highlight outward.
+ *
+ * Exported as data, not as a finished CSS string, so the contrast test can measure
+ * each stop against the label. A hand-written string would let the drawn gradient
+ * and the tested one drift apart silently.
+ */
+export const TONE_GRADIENT: Partial<Record<PopTone, readonly [string, string, string]>> = {
+  lime: [colors.limeLight, colors.lime, colors.limeDeep],
+};
+
+/**
+ * The highlight sits above centre rather than dead centre: a centred highlight on a
+ * wide pill reads as a flat lighter band, while an offset one reads as light falling
+ * on a domed surface. An ellipse rather than a circle for the same reason — a circle
+ * sized to the farthest corner of a wide button pushes its stops off the ends.
+ */
+function radialFace([highlight, mid, rim]: readonly [string, string, string]): string {
+  return `radial-gradient(ellipse at 50% 20%, ${highlight} 0%, ${mid} 50%, ${rim} 100%)`;
+}
 
 const SIZE = {
   sm: {
@@ -84,17 +123,19 @@ export function PopButton({
   style,
   accessibilityLabel,
 }: PopButtonProps) {
-  const press = useSharedValue(0);
+  const { progress, pressHandlers } = usePressProgress();
   const metrics = SIZE[size];
+  const gradient = TONE_GRADIENT[tone];
 
   // Chunky Pop translated the face into a hard sibling shadow. With a blurred
   // shadow there is nothing to translate into, so the press reads as the button
-  // squashing down into the page.
+  // squashing down into the page. `PressDarken` carries the colour half of the
+  // press; on a saturated fill the squash alone is too quiet to register.
   //
   // Only the transform is animated. `boxShadow` is not a Reanimated-animatable
-  // prop, so it stays a static style rather than being driven off `press`.
+  // prop, so it stays a static style rather than being driven off `progress`.
   const faceStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 - press.value * 0.04 }, { translateY: press.value * 2 }],
+    transform: [{ scale: 1 - progress.value * 0.04 }, { translateY: progress.value * 2 }],
   }));
 
   return (
@@ -104,12 +145,7 @@ export function PopButton({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      onPressIn={() => {
-        press.value = withSpring(1, springs.snappy);
-      }}
-      onPressOut={() => {
-        press.value = withSpring(0, springs.pop);
-      }}
+      {...pressHandlers}
       style={[disabled && styles.disabled, style]}
     >
       <Animated.View
@@ -121,9 +157,11 @@ export function PopButton({
             paddingVertical: metrics.paddingVertical,
             paddingHorizontal: metrics.paddingHorizontal,
           },
+          gradient && { experimental_backgroundImage: radialFace(gradient) },
           faceStyle,
         ]}
       >
+        <PressDarken progress={progress} radius={metrics.radius} />
         {icon}
         <Text style={[styles.label, { color: TONE_LABEL[tone], fontSize: metrics.fontSize }]}>
           {label}
@@ -141,6 +179,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     boxShadow: shadow.button,
   },
-  label: { fontFamily: typography.heading.fontFamily },
+  // `paddingHorizontal` is ink room, not spacing. Android measures a text node by
+  // its glyphs' advance widths and then clips to that box, so a final letter whose
+  // ink overhangs its advance — the tail on Fredoka's `y`, which is why "Play"
+  // rendered as "Pla" — falls outside the paint area and is dropped. A couple of
+  // points either side gives the overhang somewhere to land. Symmetric so the label
+  // stays optically centred.
+  label: { fontFamily: typography.heading.fontFamily, paddingHorizontal: 3 },
   disabled: { opacity: 0.45 },
 });

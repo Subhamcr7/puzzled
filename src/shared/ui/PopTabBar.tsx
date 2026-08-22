@@ -139,12 +139,19 @@ const styles = StyleSheet.create({
     width: 44,
     height: 34,
     borderRadius: radii.pill,
-    backgroundColor: 'rgba(123, 193, 22, 0.18)',
+    // Deep green at nearly a third opacity. At the old rgba(123, 193, 22, 0.18) the
+    // pill was barely separable from the cream bar it sits on, so the focused tab
+    // did not look focused; this reads as a pressed-in well behind the icon.
+    backgroundColor: 'rgba(79, 125, 14, 0.30)',
   },
   dimmed: { opacity: 0.45 },
   label: {
     ...typography.caption,
     fontSize: 11,
-    letterSpacing: 0.3,
+    // No `letterSpacing`. Android appends the tracking after the final glyph and
+    // then clips the text node to its measured box, so the last letter of the
+    // widest label was dropped — "Library" rendered as "Librar". `paddingHorizontal`
+    // is ink room for the same reason: the `y` tail overhangs its advance width.
+    paddingHorizontal: 2,
   },
 });

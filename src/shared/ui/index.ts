@@ -11,5 +11,6 @@ export { PopSheet } from './PopSheet';
 export { PopSurface, type SurfaceElevation } from './PopSurface';
 export { PopTabBar, useTabBarSpace } from './PopTabBar';
 export { PopToggle } from './PopToggle';
+export { PressDarken, usePressProgress } from './PressDarken';
 export { WordmarkTitle } from './WordmarkTitle';
 export { type ArtName } from '@/shared/art';

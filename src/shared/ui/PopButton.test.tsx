@@ -1,7 +1,7 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
-import { PopButton, TONE_FILL, TONE_LABEL, type PopTone } from './PopButton';
+import { PopButton, TONE_FILL, TONE_GRADIENT, TONE_LABEL, type PopTone } from './PopButton';
 
 /** Relative luminance per WCAG 2.1. */
 function luminance(hex: string): number {
@@ -62,5 +62,35 @@ describe('PopButton', () => {
     const { getByText } = render(<PopButton label="Play" tone="grass" />);
     const label = StyleSheet.flatten(getByText('Play').props.style);
     expect(label.color).toBe(TONE_LABEL.grass);
+  });
+
+  // A gradient tone's label sits over every stop, so checking the flat fill alone
+  // proves nothing about the ends. The lightest stop is the hard case for a light
+  // label and the darkest for a dark one, so both have to clear the bar. This is
+  // what makes Home's lime Play button take ink: white over that lime measures
+  // about 2:1, and no gradient hides a label you cannot read.
+  const GRADIENT_TONES = Object.keys(TONE_GRADIENT) as PopTone[];
+
+  it.each(GRADIENT_TONES)('keeps the %s label readable over every gradient stop', (tone) => {
+    const stops = TONE_GRADIENT[tone];
+    expect(stops).toBeDefined();
+    for (const stop of stops ?? []) {
+      expect(contrast(TONE_LABEL[tone], stop)).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  // The flat fill is what a gradient tone falls back to, so it has to be the
+  // gradient's own mid stop. Letting them drift means the fallback renders a colour
+  // the contrast table above never measured.
+  it.each(GRADIENT_TONES)('falls back to the %s gradient mid stop', (tone) => {
+    expect(TONE_FILL[tone]).toBe(TONE_GRADIENT[tone]?.[1]);
+  });
+
+  it('gives the label ink room so the trailing glyph is not clipped', () => {
+    // Android clips a text node to its glyphs' advance widths, dropping ink that
+    // overhangs — the tail on Fredoka's `y`, which rendered "Play" as "Pla".
+    const { getByText } = render(<PopButton label="Play" />);
+    const label = StyleSheet.flatten(getByText('Play').props.style);
+    expect(label.paddingHorizontal).toBeGreaterThan(0);
   });
 });
