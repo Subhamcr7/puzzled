@@ -31,6 +31,11 @@ Item 4 is worth flagging: `Library` is a tab label, so the fix lands in
 
 ## 2. Bug A — the trailing glyph is clipped (items 1, 4)
 
+> **Superseded — the fix below shipped as `b86ca7a` and did not work on device.**
+> The diagnosis in this section is kept as written, because it is what was believed
+> at the time and the evidence against it only exists relative to it. See §9 for
+> what the device showed and what replaced this.
+
 Both affected words lose **exactly a `y`**, and that is the whole diagnosis.
 
 Android measures a text node by its glyphs' *advance widths*, then clips drawing
@@ -259,3 +264,146 @@ being wrong, and the next step is raising it — not restructuring the layout.
 This is the same class of failure the repo already got burned by once: the
 offscreen-surface piece caching in `README.md`'s Known gaps, which typechecked,
 linted, passed tests, and rendered every piece blank on device.
+
+---
+
+## 9. Revision — 2026-08-22, later the same day
+
+§8 predicted that if the tail still clipped, "the padding is too small rather than
+the diagnosis being wrong". The device says otherwise, so this section records what
+actually happened and what changed.
+
+### What the device showed
+
+`b86ca7a` shipped §2's fix. On hardware:
+
+- `Play` still renders **`Pla`**.
+- `Library` still renders **`Librar`**.
+- `Daily Puzzle` got **worse**. §3 removed `numberOfLines` on the reasoning that an
+  unbounded label wraps rather than truncates. It does — but the tile was still only
+  half the row wide, so instead of ellipsising to "Daily Puz…" it now wraps and
+  shows bare **`Daily`**. The ellipsis was hiding how tight the tile actually was.
+
+Two of the four labels were unchanged by a fix aimed directly at them. That is
+evidence about the mechanism, not about the magnitude: adding horizontal ink room
+and getting a pixel-identical result means horizontal ink room is not what was
+missing.
+
+### The diagnosis §2 got wrong
+
+§2 asserted advance-width overhang as "the whole diagnosis" on the strength of one
+correlation — both words end in `y`. The `y` evidence is real and still stands. What
+does not follow is that the *horizontal* extent of the `y` is the axis being cut.
+
+A `y` is distinguished from every other letter in "Play" and "Librar**y**" by a tail
+that goes **below the baseline**. Read vertically, the same evidence fits better:
+
+- It explains why `paddingHorizontal` changed nothing.
+- It explains why the failure is glyph-specific rather than width-specific — §2 was
+  right that neither container is close to overflowing, which should have been a
+  hint that width was not the axis.
+- It points at a concrete budget that was being violated. `LABEL_LINE = 14` allotted
+  14pt to an 11pt Nunito Bold line, whose box exceeds that once Android's
+  `includeFontPadding` is counted. The descender sat outside the allotment.
+
+### The clipping ancestor §2 never looked at
+
+`PopSurface` sets `overflow: 'hidden'` on its inner face. `PopTabBar` and Home's
+`QuickLink` both render inside one, so **two of the three broken labels had a real
+clip in their ancestor chain** — and `b86ca7a` did not touch it. §2 reasoned only
+about the text node's own paint box and never walked up the tree.
+
+That clip is deliberate: `PopSurface.test.tsx` locks it in so nested photos follow
+the rounded corner. So it became opt-out (`clip?: boolean`, default `true`, ~15 call
+sites unaffected) rather than being removed, and only the two label-bearing surfaces
+opt out.
+
+### Why this round fixes several things at once
+
+Normally one change per hypothesis is the right discipline. It is not available here:
+**there is no Android SDK on this machine**, so no emulator and no local way to watch
+a glyph draw. One hypothesis per cycle costs a push, a ~27-minute CI build and a
+manual install — and `b86ca7a` already spent one of those to learn one negative fact.
+
+So both axes and every clipping ancestor are addressed together. None of the changes
+can make a label worse, and where a label could be given so much room that clipping
+becomes structurally impossible rather than merely unlikely, that was preferred over
+a tuned number.
+
+### Changes
+
+| # | Report | Change |
+| --- | --- | --- |
+| 1 | `Play` → `Pla` | `lineHeight` ≈1.4x `fontSize` in `SIZE` (lg 22→30pt line); `paddingHorizontal` 3→8; `flexShrink: 0`; gradient moved off the label's parent |
+| 2 | `Daily Puzzle` → `Daily` | Tile now full width — Play's own edges — so ~340pt carries a ~95pt word; `clip={false}` |
+| 3 | `My Album` | **Deleted**, not fixed. Superseding item 3 of §1's table |
+| 4 | `Library` → `Librar` | `LABEL_LINE` 14→18; `lineHeight: 16`; `paddingHorizontal` 2→6; `clip={false}` |
+| 5 | Splash had two animations | Bear's bob/sway removed; dots keep pulsing |
+
+Detail on the ones that are more than a number:
+
+**The gradient moved off the face.** `experimental_backgroundImage` sat on the same
+`Animated.View` that parents the Play label. It is an experimental RN 0.86 prop and
+the only thing distinguishing Play from every other button in the app that renders
+fine — so it was a live suspect for clipping its own children. It is now an
+`absoluteFill` layer beneath the label, the pattern `PressDarken` already
+established. Visually identical, parents nothing.
+
+**`My Album` is gone.** It was only a second route into `library`, which the tab bar
+reaches from every screen. Removing it also dissolved the two-tile `quickRow`, which
+is what let Daily Puzzle become full width with no new width math — `styles.actions`
+is already `alignSelf: 'stretch'`, so the tile inherits Play's edges exactly.
+
+**`LABEL_LINE` 14→18 is not local.** It feeds `BAR_HEIGHT` and therefore
+`useTabBarSpace`, so every `(tabs)/` screen now reserves 4pt more at the bottom.
+That is the metric being centralised working as intended, not a side effect.
+
+**The splash bear.** The loading screen had **three** animated things, not the two
+reported: the bear's 14pt bob with 3.5° sway, the wordmark's spring-in, and the dot
+pulse wave. The bob is removed on request; the dots now carry the whole "something is
+happening" signal and the wordmark still rises in. The bear staying still is
+defensible on its own terms — Android's splash window shows this same bear centred
+and static from the moment the icon is tapped, so this bear is a continuation of one
+already on screen, and animating it made the handoff read as a second screen
+appearing.
+
+### Files changed
+
+| File | Change |
+| --- | --- |
+| `src/shared/ui/PopSurface.tsx` | `clip?: boolean` prop, default `true` |
+| `src/shared/ui/PopTabBar.tsx` | `LABEL_LINE` 18, `clip={false}`, label room on both axes |
+| `src/shared/ui/PopButton.tsx` | `lineHeight` per size, label room, `flexShrink: 0`, gradient as its own layer |
+| `src/features/home/home-screen.tsx` | `My Album` removed, `quickRow` dissolved, Daily Puzzle full width, `clip={false}` |
+| `src/shared/ui/LoadingScreen.tsx` | Bear bob/sway removed |
+| `src/shared/tokens.ts` | `motion.loaderMinimum` comment no longer refers to a bob |
+| `src/shared/ui/PopSurface.test.tsx` | `clip={false}` drops `overflow`, keeps the radius |
+| `src/shared/ui/PopButton.test.tsx` | Ink-room test retargeted off the discredited theory |
+
+### Verification
+
+| Check | Status |
+| --- | --- |
+| `npm run typecheck` | clean |
+| `npm run lint` | clean |
+| `npm run format:check:src` | clean |
+| `npm test` | 196 passed, 26 suites |
+| `npm run verify:build` | clean |
+| Device pass | pending |
+
+The retargeted `PopButton` test asserts three properties — padding, `lineHeight`
+above `fontSize`, `flexShrink: 0` — and it is worth being blunt about what that is
+worth: it pins them against silent regression and nothing more. §8's caveat holds
+unchanged. No test in this repo can see a glyph.
+
+### If a `y` still clips
+
+Then the vertical theory is wrong too, and the next step is **not** more padding.
+Isolate instead:
+
+1. Temporarily set the Play label to a descender-free word. If it renders whole, the
+   mechanism is descender-specific and the search is bounded. If it also clips, the
+   `y` correlation was a coincidence twice over and the problem is elsewhere.
+2. Check the tab bar and the button independently. §1 was right that item 4 lives in
+   a different component; they may still be two bugs with two causes, and a shared
+   symptom has already misled this document once.
