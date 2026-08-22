@@ -10,46 +10,29 @@ import appJson from '../../app.json';
 import { backgrounds } from './tokens';
 
 /**
- * Keeps the launch reading as **one** screen.
+ * Keeps the launch reading as **one** screen with **one** bear.
  *
  * Android draws its splash window from the moment the icon is tapped until React
- * Native has a frame — around a second on this app. That window cannot be removed,
- * only dressed, so the goal is for it to be indistinguishable from the
- * `LoadingScreen` that replaces it. Three things have to agree for that:
+ * Native has a frame. That window cannot be removed, only dressed. On device this
+ * read as *two* bears: the native window's static bear first, then the mascot in
+ * `LoadingScreen` beside the wordmark. The report was explicit — drop the first,
+ * keep the second.
  *
- * 1. **The same background**, or the handoff is a flash of the wrong sky.
- * 2. **The same bear**, centred. Android centres `windowSplashScreenAnimatedIcon`,
- *    so `LoadingScreen` centres its bear too and anchors the wordmark and dots
- *    below that centre instead of stacking them in a column that pushes the bear up.
- * 3. **A bear that survives the mask.** Android 12+ renders the icon on a 288dp
- *    canvas and masks it to a 192dp circle, and nothing in the plugin config turns
- *    that off — so an oversized icon loses its arm, ears and feet.
- *
- * Both failure modes here have shipped before: a bear at `imageWidth: 254` clipped
- * by the mask, and later no bear at all, which merely moved the seam rather than
- * removing it — and, because the plugin writes the drawable reference into
- * `styles.xml` unconditionally, broke the Android build outright.
+ * The icon cannot simply be dropped from the config: the plugin writes
+ * `windowSplashScreenAnimatedIcon` into `styles.xml` unconditionally, so removing
+ * `image` leaves the theme pointing at a missing resource and aapt2 fails the
+ * build (this is how CI run 15 died). The native window therefore carries a fully
+ * transparent PNG instead — the launch shows only its flat sky until
+ * `LoadingScreen` mounts with the single bear, wordmark and dots.
  */
 
 const ANDROID_SPLASH_CANVAS_DP = 288;
-const ANDROID_SPLASH_SAFE_CIRCLE_DP = 192;
 
 /**
- * Fraction of `imageWidth` the bear's opaque pixels actually span, measured on
- * `splash-bear.png` as `2 × maxRadiusFromCentre / width`. It exceeds 1.0 because
- * the artwork is drawn to the very corners of its square canvas, so its diagonal
- * reach is wider than the canvas itself.
- *
- * Measured, not guessed — and only valid for the exact asset pinned below.
+ * The asset `MEASURED_ASSET_SHA256` pins is deliberately blank, so there is no
+ * content diameter to keep inside the mask — any `imageWidth` renders nothing.
  */
-const CONTENT_DIAMETER_RATIO = 1.024;
-
-/**
- * The asset `CONTENT_DIAMETER_RATIO` was measured from. If the art changes, this
- * fails: re-measure the ratio against the new file rather than bumping the hash,
- * because a differently-cropped bear needs a different `imageWidth`.
- */
-const MEASURED_ASSET_SHA256 = 'd4c05514495ba3a8d18d86db5a92a7937ab0fe2e50e2975e4166f65a34c3f367';
+const MEASURED_ASSET_SHA256 = 'c05bcde1ddc0492b5ff57db2e931c456c4d209b9508c65b192a5ca864ca5a01a';
 
 /**
  * `app.json` imports with its literal shape, which types every plugin entry as
@@ -74,41 +57,17 @@ describe('native splash', () => {
   const config = splashPluginConfig();
 
   it('declares an image, which the Android build requires', () => {
-    // `withAndroidSplashStyles` writes `windowSplashScreenAnimatedIcon` into
-    // styles.xml whether or not a drawable is generated, so dropping `image` leaves
-    // the theme pointing at a missing resource and aapt2 fails the release build.
-    // That is not a hypothetical: it is how CI run 15 died, with typecheck, lint
-    // and every test green, because nothing before Gradle can see a resource error.
     expect(config.image).toBeDefined();
   });
 
-  it('is still the asset the content ratio was measured from', () => {
+  it('is still the pinned blank asset', () => {
     const assetPath = path.join(__dirname, '../..', String(config.image));
     const actual = createHash('sha256').update(readFileSync(assetPath)).digest('hex');
     expect(actual).toBe(MEASURED_ASSET_SHA256);
   });
 
-  it('fits inside the 192dp circular mask, so the bear is not cut off', () => {
-    const imageWidth = Number(config.imageWidth);
-    const contentDiameterDp = imageWidth * CONTENT_DIAMETER_RATIO;
-
-    expect(contentDiameterDp).toBeLessThanOrEqual(ANDROID_SPLASH_SAFE_CIRCLE_DP);
-    // And it must not shrink to nothing chasing that ceiling.
-    expect(contentDiameterDp).toBeGreaterThan(ANDROID_SPLASH_SAFE_CIRCLE_DP * 0.85);
-  });
-
   it('never asks for an image wider than the canvas the plugin composites onto', () => {
     expect(Number(config.imageWidth)).toBeLessThanOrEqual(ANDROID_SPLASH_CANVAS_DP);
-  });
-
-  it('is close in size to the loading screen bear it hands over to', () => {
-    // `LoadingScreen` renders at `min(width * 0.52, 240)` dp — about 187dp on a
-    // 360dp-wide phone. A large mismatch would make the bear visibly jump size at
-    // the handoff, which reads as two screens even when both are centred.
-    const loadingScreenBearDp = Math.min(360 * 0.52, 240);
-    const ratio = Number(config.imageWidth) / loadingScreenBearDp;
-    expect(ratio).toBeGreaterThan(0.85);
-    expect(ratio).toBeLessThan(1.15);
   });
 
   it('shares its background with the loading screen that replaces it', () => {

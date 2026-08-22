@@ -71,9 +71,9 @@ export function useTabBarSpace(): number {
 /** Puzzle Journey bottom navigation, used as the custom `tabBar` for Tabs. */
 export function PopTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
-  // `fontSize` scales with the system font scale; an explicit `lineHeight` does
-  // not. Scaling the line box with it keeps every glyph inside it at any setting —
-  // the same defect fixed on `PopButton`'s label.
+  // Font scaling is done BY HAND (see `PopButton`): Android's `allowFontScaling`
+  // path paints only the first few glyphs of an auto-scaled label on
+  // RN 0.86/Fabric — "Library" rendered as "Librar" above 1.0x font scale.
   const { fontScale } = useWindowDimensions();
 
   return (
@@ -118,10 +118,12 @@ export function PopTabBar({ state, navigation }: TabBarProps) {
               {focused ? <View style={styles.pill} /> : null}
               <Art name={meta.art} size={26} style={focused ? undefined : styles.dimmed} />
               <Text
+                allowFontScaling={false}
                 style={[
                   styles.label,
                   {
                     color: focused ? meta.tint : colors.inkMuted,
+                    fontSize: 11 * fontScale,
                     lineHeight: Math.round(16 * fontScale),
                   },
                 ]}

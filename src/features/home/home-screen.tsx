@@ -66,8 +66,10 @@ async function loadHomeData(): Promise<HomeData> {
  * Home previously carried all of it and read as a dashboard rather than a
  * landing screen.
  *
- * The "My Album" tile is gone too, on request. It was only a second route into
- * `library`, which the tab bar already reaches from every screen.
+ * The "My Album" tile spent some time removed, then came back on request — it
+ * stacks below "Daily Puzzle" at full width rather than reviving the old
+ * half-width two-tile row, which is the layout that let labels wrap at raised
+ * font scales in the first place.
  */
 export function HomeScreen() {
   const [data, setData] = useState<HomeData>(EMPTY);
@@ -145,6 +147,8 @@ export function HomeScreen() {
             />
 
             <QuickLink art="calendar" label="Daily Puzzle" onPress={() => router.push('/daily')} />
+
+            <QuickLink art="album" label="My Album" onPress={() => router.push('/library')} />
           </EnterView>
         </View>
       </SafeAreaView>
@@ -154,9 +158,9 @@ export function HomeScreen() {
 
 function QuickLink({ art, label, onPress }: { art: ArtName; label: string; onPress: () => void }) {
   const { progress, pressHandlers } = usePressProgress();
-  // `fontSize` scales with the system font scale; an explicit `lineHeight` does
-  // not. Scaling the line box with it keeps every glyph inside it at any setting —
-  // the same defect fixed on `PopButton`'s and `PopTabBar`'s labels.
+  // Font scaling is done BY HAND (see `PopButton`): Android's `allowFontScaling`
+  // path paints only the first few glyphs of an auto-scaled label on
+  // RN 0.86/Fabric — "Daily Puzzle" rendered as "Daily" above 1.0x font scale.
   const { fontScale } = useWindowDimensions();
 
   return (
@@ -183,7 +187,16 @@ function QuickLink({ art, label, onPress }: { art: ArtName; label: string; onPre
         <View style={styles.quickLinkInner}>
           <PressDarken progress={progress} radius={radii.md} />
           <Art name={art} size={30} />
-          <Text style={[styles.quickLinkLabel, { lineHeight: Math.round(20 * fontScale) }]}>
+          <Text
+            allowFontScaling={false}
+            style={[
+              styles.quickLinkLabel,
+              {
+                fontSize: 14 * fontScale,
+                lineHeight: Math.round(20 * fontScale),
+              },
+            ]}
+          >
             {label}
           </Text>
         </View>

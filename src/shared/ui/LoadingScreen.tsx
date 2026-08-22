@@ -19,11 +19,11 @@ import { WordmarkTitle } from './WordmarkTitle';
 /**
  * The loading screen, and the only place the bear is ever seen whole.
  *
- * Android 12+ masks the native splash icon to a 192dp circle and offers no way
- * to opt out (see `src/shared/splash.test.ts`), so the native splash can only
- * ever show a small, static, circle-cropped bear. This takes over the instant
- * that splash hides, on the same `#8AE3F5` sky, so the two read as one screen —
- * the bear appears to grow out of the circle rather than being replaced.
+ * The native splash window is dressed in a flat `#8AE3F5` sky with an
+ * intentionally blank icon (see `src/shared/splash.test.ts`) — on device the
+ * static bear it used to draw read as a second mascot appearing before this
+ * screen's one. This overlay takes over the instant that window hides, so the
+ * launch reads as: sky, then bear, wordmark and dots.
  *
  * Everything here is Reanimated, which the app already ships and which runs the
  * animation on the UI thread — so the dots keep pulsing smoothly while the

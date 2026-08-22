@@ -15,14 +15,14 @@ worse in a way that looked deliberate.
 
 ## 1. Reported items
 
-| # | Report | Where it actually lives |
-| --- | --- | --- |
-| 1 | "Play" renders as "Pla" | `PopButton` label |
-| 2 | "Daily Puzzle" renders as "Daily Puz…" | Home `QuickLink` |
-| 3 | "My Album" renders as "My Alb…" | Home `QuickLink` |
-| 4 | "Library" renders as "Librar" | `PopTabBar` label — **not** the Home screen |
-| 5 | Press/tap colour should be darker | Nothing darkened on press anywhere |
-| 6 | Play button should be lime with a radial gradient | `PopButton` `grass` tone |
+| #   | Report                                            | Where it actually lives                     |
+| --- | ------------------------------------------------- | ------------------------------------------- |
+| 1   | "Play" renders as "Pla"                           | `PopButton` label                           |
+| 2   | "Daily Puzzle" renders as "Daily Puz…"            | Home `QuickLink`                            |
+| 3   | "My Album" renders as "My Alb…"                   | Home `QuickLink`                            |
+| 4   | "Library" renders as "Librar"                     | `PopTabBar` label — **not** the Home screen |
+| 5   | Press/tap colour should be darker                 | Nothing darkened on press anywhere          |
+| 6   | Play button should be lime with a radial gradient | `PopButton` `grass` tone                    |
 
 Item 4 is worth flagging: `Library` is a tab label, so the fix lands in
 `PopTabBar` and changes all four tabs, not just what is visible from Home.
@@ -38,7 +38,7 @@ Item 4 is worth flagging: `Library` is a tab label, so the fix lands in
 
 Both affected words lose **exactly a `y`**, and that is the whole diagnosis.
 
-Android measures a text node by its glyphs' *advance widths*, then clips drawing
+Android measures a text node by its glyphs' _advance widths_, then clips drawing
 to that box. A glyph whose ink extends past its own advance — the descending tail
 on `y`, in both Fredoka (`Play`, 22pt) and Nunito Bold (`Library`, 11pt) — falls
 outside the paint area and is dropped. The letter does not shift or squeeze; it
@@ -57,12 +57,12 @@ on `PopTabBar` — as ink room for the overhang. Symmetric, so the label stays
 optically centred rather than visibly nudged off-axis.
 
 `PopTabBar` additionally drops `letterSpacing: 0.3`. Android appends tracking
-*after* the final glyph and then clips to the measured box, so letter-spacing
+_after_ the final glyph and then clips to the measured box, so letter-spacing
 compounds exactly this failure on the label most likely to hit it.
 
 ## 3. Bug B — the label is genuinely too narrow (items 2, 3)
 
-Different failure. The `…` here is *deliberate*: `da18ae2` added `flexShrink: 1`
+Different failure. The `…` here is _deliberate_: `da18ae2` added `flexShrink: 1`
 plus `numberOfLines={1}` on purpose, trading a hard clip for an ellipsis on the
 reasoning that an ellipsis is "legible and obviously deliberate".
 
@@ -96,13 +96,13 @@ tile's full width (~128pt usable after 8pt padding either side), which holds to
 roughly 1.4x font scale, and `numberOfLines` comes off entirely — unbounded, an
 extreme scale wraps to a second line, which still shows every letter.
 
-| Approach | Why not |
-| --- | --- |
-| Widen the tiles | Only two fit across; the row is already full-bleed |
+| Approach                               | Why not                                                     |
+| -------------------------------------- | ----------------------------------------------------------- |
+| Widen the tiles                        | Only two fit across; the row is already full-bleed          |
 | Shrink icon + gap + font, keep the row | Buys ~10pt. Fails again one notch further up the font scale |
-| Cap `maxFontSizeMultiplier` | Overrides an accessibility setting to protect a layout |
-| Shorten to "Daily" / "Album" | The report was explicitly that the full words must show |
-| Keep the ellipsis | What was rejected |
+| Cap `maxFontSizeMultiplier`            | Overrides an accessibility setting to protect a layout      |
+| Shorten to "Daily" / "Album"           | The report was explicitly that the full words must show     |
+| Keep the ellipsis                      | What was rejected                                           |
 
 Stacking also matches `PopTabBar`, which already puts its icon above its label,
 so Home stops being the one place that does it differently.
@@ -156,37 +156,37 @@ centre reads as a flat lighter band, offset reads as light falling on a dome.
 This is the one consequence of item 6 that was not asked for, so it is recorded
 in full.
 
-Green dominates relative luminance, so a green bright enough to read as *lime*
+Green dominates relative luminance, so a green bright enough to read as _lime_
 cannot carry white text at WCAG AA large-text (3.0:1). Measured against white:
 
-| Candidate | Contrast vs white | |
-| --- | --- | --- |
-| `grassDeep` `#659E12` (the current Play fill) | 3.25 | passes, barely |
-| `#6E9B0F` | 3.30 | passes — but darker and barely limer than current |
-| `#6AA513` | 3.00 | fails |
-| `#6FAF14` | 2.69 | fails |
-| `lime` `#8CCF1B` | 1.90 | fails |
+| Candidate                                     | Contrast vs white |                                                   |
+| --------------------------------------------- | ----------------- | ------------------------------------------------- |
+| `grassDeep` `#659E12` (the current Play fill) | 3.25              | passes, barely                                    |
+| `#6E9B0F`                                     | 3.30              | passes — but darker and barely limer than current |
+| `#6AA513`                                     | 3.00              | fails                                             |
+| `#6FAF14`                                     | 2.69              | fails                                             |
+| `lime` `#8CCF1B`                              | 1.90              | fails                                             |
 
-The ceiling for a white label lands essentially *at* the colour already in use.
+The ceiling for a white label lands essentially _at_ the colour already in use.
 So "brighter lime" and "white label" are mutually exclusive here — the visible
 change would have been almost nil.
 
 Switching the label to `ink` resolves it with room to spare, and lets the lime be
 genuinely bright:
 
-| Stop | Colour | Contrast vs `ink` |
-| --- | --- | --- |
-| `limeLight` | `#A6E22E` | 8.79 |
-| `lime` | `#8CCF1B` | 7.18 |
-| `limeDeep` | `#5E9310` | 3.67 |
+| Stop        | Colour    | Contrast vs `ink` |
+| ----------- | --------- | ----------------- |
+| `limeLight` | `#A6E22E` | 8.79              |
+| `lime`      | `#8CCF1B` | 7.18              |
+| `limeDeep`  | `#5E9310` | 3.67              |
 
 Every stop clears AA large text, including the darkest rim, which is the hard
 case for a dark label.
 
-| Alternative | Why not |
-| --- | --- |
-| Keep white, darken the lime to pass | Delivers no perceptible change from today |
-| Keep white, relax the contrast assertion | 1.90:1 is unreadable in sunlight, and the guard exists on purpose |
+| Alternative                                       | Why not                                                                |
+| ------------------------------------------------- | ---------------------------------------------------------------------- |
+| Keep white, darken the lime to pass               | Delivers no perceptible change from today                              |
+| Keep white, relax the contrast assertion          | 1.90:1 is unreadable in sunlight, and the guard exists on purpose      |
 | Bright lime centre, deeper centre behind the text | The label is centred; there is nowhere for it to sit off the highlight |
 
 ### A new `lime` tone, not a repainted `grass`
@@ -212,29 +212,29 @@ by. So:
 
 ## 6. Files changed
 
-| File | Change |
-| --- | --- |
-| `src/shared/tokens.ts` | `lime` / `limeLight` / `limeDeep`; `pressState` |
-| `src/shared/theme.ts` | Re-export `pressState` |
-| `src/shared/ui/PressDarken.tsx` | **New** — `usePressProgress`, `PressDarken` |
-| `src/shared/ui/PopButton.tsx` | `lime` tone, `TONE_GRADIENT`, label ink room, press tint |
-| `src/shared/ui/PopTabBar.tsx` | Label ink room, `letterSpacing` removed, darker focus pill |
-| `src/features/home/home-screen.tsx` | Stacked quick links, press feedback, `tone="lime"` |
-| `src/shared/ui/index.ts` | Export the press primitives |
-| `src/shared/ui/PopButton.test.tsx` | Gradient-stop contrast, fallback, ink-room guards |
+| File                                | Change                                                     |
+| ----------------------------------- | ---------------------------------------------------------- |
+| `src/shared/tokens.ts`              | `lime` / `limeLight` / `limeDeep`; `pressState`            |
+| `src/shared/theme.ts`               | Re-export `pressState`                                     |
+| `src/shared/ui/PressDarken.tsx`     | **New** — `usePressProgress`, `PressDarken`                |
+| `src/shared/ui/PopButton.tsx`       | `lime` tone, `TONE_GRADIENT`, label ink room, press tint   |
+| `src/shared/ui/PopTabBar.tsx`       | Label ink room, `letterSpacing` removed, darker focus pill |
+| `src/features/home/home-screen.tsx` | Stacked quick links, press feedback, `tone="lime"`         |
+| `src/shared/ui/index.ts`            | Export the press primitives                                |
+| `src/shared/ui/PopButton.test.tsx`  | Gradient-stop contrast, fallback, ink-room guards          |
 
 ---
 
 ## 7. Verification
 
-| Check | Status |
-| --- | --- |
-| `npm run typecheck` | clean |
-| `npm run lint` | clean |
-| `npm run format:check:src` | clean |
-| `npm test` | 195 passed, 26 suites |
-| `npm run verify:build` | deferred to CI (`.github/workflows/android-apk.yml`) |
-| Device pass | pending — see Open risk |
+| Check                      | Status                                               |
+| -------------------------- | ---------------------------------------------------- |
+| `npm run typecheck`        | clean                                                |
+| `npm run lint`             | clean                                                |
+| `npm run format:check:src` | clean                                                |
+| `npm test`                 | 195 passed, 26 suites                                |
+| `npm run verify:build`     | deferred to CI (`.github/workflows/android-apk.yml`) |
+| Device pass                | pending — see Open risk                              |
 
 Lint caught one real defect on the first pass. `usePressProgress` originally
 memoised its handlers, which meant passing `progress` into `useMemo` and then
@@ -255,7 +255,7 @@ two independent reports, two different fonts, both losing exactly the
 right-overhanging glyph — and padding is the standard remedy for it. But glyph
 clipping is a device rendering behaviour that neither the type checker, the
 linter nor the test suite can observe. The added test asserts only that the ink
-room *exists*, not that it is sufficient.
+room _exists_, not that it is sufficient.
 
 So this needs eyes on a real device at the default font scale and at a raised
 one. If the tail still clips, the padding is too small rather than the diagnosis
@@ -293,7 +293,7 @@ missing.
 
 §2 asserted advance-width overhang as "the whole diagnosis" on the strength of one
 correlation — both words end in `y`. The `y` evidence is real and still stands. What
-does not follow is that the *horizontal* extent of the `y` is the axis being cut.
+does not follow is that the _horizontal_ extent of the `y` is the axis being cut.
 
 A `y` is distinguished from every other letter in "Play" and "Librar**y**" by a tail
 that goes **below the baseline**. Read vertically, the same evidence fits better:
@@ -332,13 +332,13 @@ a tuned number.
 
 ### Changes
 
-| # | Report | Change |
-| --- | --- | --- |
-| 1 | `Play` → `Pla` | `lineHeight` ≈1.4x `fontSize` in `SIZE` (lg 22→30pt line); `paddingHorizontal` 3→8; `flexShrink: 0`; gradient moved off the label's parent |
-| 2 | `Daily Puzzle` → `Daily` | Tile now full width — Play's own edges — so ~340pt carries a ~95pt word; `clip={false}` |
-| 3 | `My Album` | **Deleted**, not fixed. Superseding item 3 of §1's table |
-| 4 | `Library` → `Librar` | `LABEL_LINE` 14→18; `lineHeight: 16`; `paddingHorizontal` 2→6; `clip={false}` |
-| 5 | Splash had two animations | Bear's bob/sway removed; dots keep pulsing |
+| #   | Report                    | Change                                                                                                                                     |
+| --- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `Play` → `Pla`            | `lineHeight` ≈1.4x `fontSize` in `SIZE` (lg 22→30pt line); `paddingHorizontal` 3→8; `flexShrink: 0`; gradient moved off the label's parent |
+| 2   | `Daily Puzzle` → `Daily`  | Tile now full width — Play's own edges — so ~340pt carries a ~95pt word; `clip={false}`                                                    |
+| 3   | `My Album`                | **Deleted**, not fixed. Superseding item 3 of §1's table                                                                                   |
+| 4   | `Library` → `Librar`      | `LABEL_LINE` 14→18; `lineHeight: 16`; `paddingHorizontal` 2→6; `clip={false}`                                                              |
+| 5   | Splash had two animations | Bear's bob/sway removed; dots keep pulsing                                                                                                 |
 
 Detail on the ones that are more than a number:
 
@@ -369,27 +369,27 @@ appearing.
 
 ### Files changed
 
-| File | Change |
-| --- | --- |
-| `src/shared/ui/PopSurface.tsx` | `clip?: boolean` prop, default `true` |
-| `src/shared/ui/PopTabBar.tsx` | `LABEL_LINE` 18, `clip={false}`, label room on both axes |
-| `src/shared/ui/PopButton.tsx` | `lineHeight` per size, label room, `flexShrink: 0`, gradient as its own layer |
+| File                                | Change                                                                            |
+| ----------------------------------- | --------------------------------------------------------------------------------- |
+| `src/shared/ui/PopSurface.tsx`      | `clip?: boolean` prop, default `true`                                             |
+| `src/shared/ui/PopTabBar.tsx`       | `LABEL_LINE` 18, `clip={false}`, label room on both axes                          |
+| `src/shared/ui/PopButton.tsx`       | `lineHeight` per size, label room, `flexShrink: 0`, gradient as its own layer     |
 | `src/features/home/home-screen.tsx` | `My Album` removed, `quickRow` dissolved, Daily Puzzle full width, `clip={false}` |
-| `src/shared/ui/LoadingScreen.tsx` | Bear bob/sway removed |
-| `src/shared/tokens.ts` | `motion.loaderMinimum` comment no longer refers to a bob |
-| `src/shared/ui/PopSurface.test.tsx` | `clip={false}` drops `overflow`, keeps the radius |
-| `src/shared/ui/PopButton.test.tsx` | Ink-room test retargeted off the discredited theory |
+| `src/shared/ui/LoadingScreen.tsx`   | Bear bob/sway removed                                                             |
+| `src/shared/tokens.ts`              | `motion.loaderMinimum` comment no longer refers to a bob                          |
+| `src/shared/ui/PopSurface.test.tsx` | `clip={false}` drops `overflow`, keeps the radius                                 |
+| `src/shared/ui/PopButton.test.tsx`  | Ink-room test retargeted off the discredited theory                               |
 
 ### Verification
 
-| Check | Status |
-| --- | --- |
-| `npm run typecheck` | clean |
-| `npm run lint` | clean |
-| `npm run format:check:src` | clean |
-| `npm test` | 196 passed, 26 suites |
-| `npm run verify:build` | clean |
-| Device pass | pending |
+| Check                      | Status                |
+| -------------------------- | --------------------- |
+| `npm run typecheck`        | clean                 |
+| `npm run lint`             | clean                 |
+| `npm run format:check:src` | clean                 |
+| `npm test`                 | 196 passed, 26 suites |
+| `npm run verify:build`     | clean                 |
+| Device pass                | pending               |
 
 The retargeted `PopButton` test asserts three properties — padding, `lineHeight`
 above `fontSize`, `flexShrink: 0` — and it is worth being blunt about what that is
@@ -417,7 +417,7 @@ A new device report arrived with the same three symptoms: `Pla`, bare `Daily`,
 
 ### Which build produced it
 
-The symptoms match §9's *intermediate* state exactly — `Daily Puzzle` wrapping to
+The symptoms match §9's _intermediate_ state exactly — `Daily Puzzle` wrapping to
 bare `Daily` requires the half-width two-tile row that `3b2b56a` deleted, and the
 complaint that the Daily tile should "align with Play" describes a layout where it
 does not share Play's edges, which the full-width tile has done since `3b2b56a`.
@@ -454,22 +454,22 @@ The fade-out handoff is unchanged; it is how the screen leaves, not something it
 
 ### Files changed
 
-| File | Change |
-| --- | --- |
-| `src/shared/ui/LoadingScreen.tsx` | Wordmark spring-in removed; dots are the only animation |
-| `src/shared/ui/PopButton.tsx` | Label `lineHeight` scaled by system `fontScale` |
-| `src/shared/ui/PopTabBar.tsx` | Tab-label `lineHeight` scaled by system `fontScale` |
+| File                                | Change                                                     |
+| ----------------------------------- | ---------------------------------------------------------- |
+| `src/shared/ui/LoadingScreen.tsx`   | Wordmark spring-in removed; dots are the only animation    |
+| `src/shared/ui/PopButton.tsx`       | Label `lineHeight` scaled by system `fontScale`            |
+| `src/shared/ui/PopTabBar.tsx`       | Tab-label `lineHeight` scaled by system `fontScale`        |
 | `src/features/home/home-screen.tsx` | Quick-link label `lineHeight` scaled by system `fontScale` |
 
 ### Verification
 
-| Check | Status |
-| --- | --- |
-| `npm run typecheck` | clean |
-| `npm run lint` | clean |
-| `npm run format:check:src` | clean |
-| `npm test` | 196 passed, 26 suites |
-| Device pass | pending — must be run against a build of **this** commit |
+| Check                      | Status                                                   |
+| -------------------------- | -------------------------------------------------------- |
+| `npm run typecheck`        | clean                                                    |
+| `npm run lint`             | clean                                                    |
+| `npm run format:check:src` | clean                                                    |
+| `npm test`                 | 196 passed, 26 suites                                    |
+| Device pass                | pending — must be run against a build of **this** commit |
 
 ### What the next report must state
 
@@ -477,3 +477,69 @@ If letters are missing after installing a build of this commit, say so explicitl
 include the phone's **font size setting** (Settings → Display → Font size) — the first
 useful isolation step is whether the failure tracks that setting, which no report so
 far has mentioned.
+
+---
+
+## 11. Revision — device debugging session, same day again
+
+The report finally named the variable: at the phone's default font size every label
+renders whole; raise the font size and `Play` → `Pla`, `Daily Puzzle` → `Daily`,
+`Library` → `Librar`. This time the phone was attached over USB with adb available,
+so the failure was reproduced locally instead of guessed at.
+
+### What the reproduction showed
+
+With `font_scale 1.3` set over adb:
+
+- The home screen shows `Pla`, bare `Daily`, and tab labels reading `Hom`,
+  `Puzzl`, `Librar`, `Profil` — **including words with no descender**. §2's and §9's
+  glyph-shape theories are both dead: whole trailing glyphs vanish regardless of shape.
+- Maestro's accessibility dump reports the _full_ strings inside full-size boxes
+  (`Play` laid out 187px wide) while a pixel map of the same region shows ink stopping
+  cleanly after `Pla` — no partial glyph, no second line painted anywhere in the button.
+- So layout succeeds and painting truncates. This is the RN 0.86/Fabric Android text
+  pipeline failing specifically when its font-scale path engages, not a width budget
+  anywhere in this app's styles.
+
+### The fix that follows from the evidence
+
+Stop using Android's broken path. Each label now sets `allowFontScaling={false}` and
+multiplies its sizes by `fontScale` from `useWindowDimensions()` itself. The visual
+result is identical scaling on every device and setting — the requirement — while the
+text engine is handed final absolute numbers it measures correctly. Applied to
+`PopButton`, `PopTabBar` and Home's quick links; §10's scaled-line-height change is
+subsumed by this.
+
+### Two bears on the splash
+
+The report also clarified the splash complaint: there were **two bears** — the native
+window's static bear, then `LoadingScreen`'s mascot beside the wordmark and dots.
+"Remove one popup animation" meant remove the first. The plugin cannot run without an
+icon resource (§splash.test.ts history), so the native window now carries a fully
+transparent PNG (`splash-blank.png`) on the same sky: the launch reads as flat sky,
+then one bear with wordmark and dots.
+
+### My Album restored
+
+Also on request. It returns stacked below "Daily Puzzle" at full width rather than
+reopening the half-width two-tile row — that row is what let labels wrap at raised
+scales in the first place.
+
+### Files changed
+
+| File                                | Change                                                         |
+| ----------------------------------- | -------------------------------------------------------------- |
+| `src/shared/ui/PopButton.tsx`       | Manual font scaling (`allowFontScaling={false}` × `fontScale`) |
+| `src/shared/ui/PopTabBar.tsx`       | Same                                                           |
+| `src/features/home/home-screen.tsx` | Same; My Album tile restored as a third stacked action         |
+| `assets/images/splash-blank.png`    | New transparent icon for the native splash window              |
+| `app.json`                          | Splash image → blank asset                                     |
+| `src/shared/splash.test.ts`         | Rewritten for the blank-icon design                            |
+
+### Verification
+
+| Check                               | Status                                                                                                            |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `npm run typecheck` / lint / format | clean                                                                                                             |
+| `npm test`                          | 194 passed (two obsolete splash assertions retired)                                                               |
+| Device pass                         | done as part of the fix loop: APK installed over adb, `font_scale 1.3` set, screenshots verified before reporting |

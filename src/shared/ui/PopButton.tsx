@@ -148,8 +148,13 @@ export function PopButton({
   const { progress, pressHandlers } = usePressProgress();
   const metrics = SIZE[size];
   const gradient = TONE_GRADIENT[tone];
-  // `fontSize` scales with the system font scale; an explicit `lineHeight` does
-  // not. Scaling the line box with it keeps every glyph inside it at any setting.
+  // Font scaling is done BY HAND here rather than left to Android's
+  // `allowFontScaling`. On RN 0.86/Fabric, a label auto-scaled above 1.0x lays its
+  // view out correctly but paints only the first few glyphs — "Play" rendered as
+  // "Pla", tab labels as "Hom"/"Librar" — reproduced on-device and measured: the
+  // accessibility tree reported the full string in a full-size box while the
+  // pixels stopped mid-word. Passing `allowFontScaling={false}` and multiplying
+  // sizes by `fontScale` ourselves bypasses that code path and scales identically.
   const { fontScale } = useWindowDimensions();
 
   // Chunky Pop translated the face into a hard sibling shadow. With a blurred
@@ -206,11 +211,12 @@ export function PopButton({
         <PressDarken progress={progress} radius={metrics.radius} />
         {icon}
         <Text
+          allowFontScaling={false}
           style={[
             styles.label,
             {
               color: TONE_LABEL[tone],
-              fontSize: metrics.fontSize,
+              fontSize: metrics.fontSize * fontScale,
               lineHeight: Math.round(metrics.lineHeight * fontScale),
             },
           ]}
