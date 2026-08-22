@@ -27,7 +27,7 @@ import { WordmarkTitle } from './WordmarkTitle';
  * the bear appears to grow out of the circle rather than being replaced.
  *
  * Everything here is Reanimated, which the app already ships and which runs the
- * animation on the UI thread — so the bear keeps bobbing smoothly while the
+ * animation on the UI thread — so the dots keep pulsing smoothly while the
  * JS thread is busy opening the database and mounting the navigator behind this
  * overlay. That is the whole reason to animate a loading screen: it stays alive
  * exactly when the JS thread cannot.
@@ -39,10 +39,6 @@ import { WordmarkTitle } from './WordmarkTitle';
  * ships today; `AnimatedArt` stays the seam for real Lottie art later.
  */
 
-/** How far the bear rises and falls on each breath, in points. */
-const BOB_DISTANCE = 14;
-/** Degrees the bear rocks either side of upright while it bobs. */
-const SWAY_DEGREES = 3.5;
 /** Dots in the progress row. */
 const DOT_COUNT = 3;
 
@@ -55,7 +51,7 @@ interface LoadingScreenProps {
   /**
    * Whether the work behind the overlay has finished. The overlay leaves only
    * when this is true *and* `motion.loaderMinimum` has elapsed, so a warm start
-   * still shows one full bob instead of a two-frame flash.
+   * still shows a full beat of the dots instead of a two-frame flash.
    */
   ready?: boolean;
 }
@@ -67,19 +63,12 @@ export function LoadingScreen({ onDone, ready = true }: LoadingScreenProps) {
   const bearSize = Math.min(width * 0.52, 240);
 
   const intro = useSharedValue(0);
-  const breathe = useSharedValue(0);
   const fade = useSharedValue(1);
 
   useEffect(() => {
-    // Rise into place once, then breathe forever. The intro overshoots via a
-    // spring; the idle loop is timed, because a repeating spring drifts.
+    // The wordmark rises into place once, via a spring that overshoots slightly.
     intro.value = withSpring(1, springs.pop);
-    breathe.value = withRepeat(
-      withTiming(1, { duration: motion.idle, easing: Easing.inOut(Easing.quad) }),
-      -1,
-      true,
-    );
-  }, [intro, breathe]);
+  }, [intro]);
 
   useEffect(() => {
     if (!ready) {
@@ -100,24 +89,17 @@ export function LoadingScreen({ onDone, ready = true }: LoadingScreenProps) {
   const overlayStyle = useAnimatedStyle(() => ({ opacity: fade.value }));
 
   /*
-   * The bear does **not** animate in — it is already on screen.
+   * The bear does not animate at all — it is already on screen and it stays put.
    *
-   * Android shows its splash window from the moment the icon is tapped until RN
-   * has a frame, and that window carries this same bear, centred. So this bear is
-   * a continuation of one already being displayed, not an entrance: rising or
-   * scaling it here would make the handoff read as a second screen appearing,
-   * which is the whole complaint. It starts at rest and only breathes.
+   * Android shows its splash window from the moment the icon is tapped until RN has
+   * a frame, and that window carries this same bear, centred. So this bear is a
+   * continuation of one already being displayed, not an entrance: rising or scaling
+   * it here would make the handoff read as a second screen appearing.
    *
-   * Everything below it still animates in, which is what makes the moment feel
-   * alive without moving the one element the eye is already locked onto.
+   * It used to breathe — a 14pt bob with a 3.5° sway — which was removed on request.
+   * The pulsing dots below now carry the whole "something is happening" signal, and
+   * the wordmark still rises in.
    */
-  const bearStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: -breathe.value * BOB_DISTANCE },
-      { rotateZ: `${(breathe.value * 2 - 1) * SWAY_DEGREES}deg` },
-    ],
-  }));
-
   const wordmarkStyle = useAnimatedStyle(() => ({
     opacity: intro.value,
     transform: [{ translateY: (1 - intro.value) * 18 }],
@@ -136,9 +118,9 @@ export function LoadingScreen({ onDone, ready = true }: LoadingScreenProps) {
           bear can only line up across the handoff if this one is centred too —
           which it was not while the wordmark and dots shared the column and
           pushed it upward. */}
-      <Animated.View style={bearStyle}>
+      <View>
         <Art name="bear" size={bearSize} testID="loading-bear" />
-      </Animated.View>
+      </View>
 
       {/* Anchored below the centre rather than stacked under the bear, so adding
           or resizing anything here can never shift the bear off the native

@@ -36,7 +36,16 @@ const TABS: Record<string, { art: ArtName; label: string; tint: string }> = {
  * content scrolled underneath and the last row was unreadable.
  */
 const ICON_SIZE = 26;
-const LABEL_LINE = 14;
+/**
+ * Vertical room for the label line.
+ *
+ * 18, not the 14 this used to be. An 11pt Nunito Bold line box is taller than 11pt
+ * once Android's `includeFontPadding` is counted, so 14 left the descender hanging
+ * outside the budget — and `PopSurface` used to enforce that budget with
+ * `overflow: hidden`, which is the likeliest reason "Library" rendered as "Librar".
+ * The clip is now off (see the `clip` prop below); this gives the line room even so.
+ */
+const LABEL_LINE = 18;
 const ITEM_GAP = 2;
 const BAR_HEIGHT = spacing.sm + ICON_SIZE + ITEM_GAP + LABEL_LINE + spacing.xs;
 
@@ -68,7 +77,10 @@ export function PopTabBar({ state, navigation }: TabBarProps) {
       style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}
       pointerEvents="box-none"
     >
-      <PopSurface radius={radii.xl} elevation="raised" contentStyle={styles.bar}>
+      {/* `clip={false}`: the face's clip cuts a descender as readily as a photo
+          corner, and every child here is an icon or a label — nothing needs
+          clipping to the radius. */}
+      <PopSurface radius={radii.xl} elevation="raised" clip={false} contentStyle={styles.bar}>
         {state.routes.map((route, index) => {
           const meta = TABS[route.name];
           if (!meta) {
@@ -148,10 +160,18 @@ const styles = StyleSheet.create({
   label: {
     ...typography.caption,
     fontSize: 11,
-    // No `letterSpacing`. Android appends the tracking after the final glyph and
-    // then clips the text node to its measured box, so the last letter of the
-    // widest label was dropped — "Library" rendered as "Librar". `paddingHorizontal`
-    // is ink room for the same reason: the `y` tail overhangs its advance width.
-    paddingHorizontal: 2,
+    // "Library" lost its `y` here, and the cause was never settled — an earlier
+    // attempt blamed horizontal advance-width clipping, added `paddingHorizontal`,
+    // and changed nothing on device. So this gives the label room on *both* axes and
+    // removes the clip that could enforce either:
+    //
+    //   - `lineHeight` well above the font size, so the descender has somewhere to go.
+    //   - `paddingHorizontal` as ink room for a tail overhanging its advance width.
+    //   - `clip={false}` on the `PopSurface` above, plus `LABEL_LINE` raised to 18.
+    //
+    // No `letterSpacing`, deliberately: Android appends tracking after the final
+    // glyph, which only widens the gap between the ink and whatever clips it.
+    lineHeight: 16,
+    paddingHorizontal: 6,
   },
 });

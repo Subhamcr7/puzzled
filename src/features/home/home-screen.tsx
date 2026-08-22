@@ -52,12 +52,15 @@ async function loadHomeData(): Promise<HomeData> {
 
 /**
  * Home is deliberately only what the team's mockup shows: the meadow, the coin
- * balance, the logo, the mascot, and three buttons.
+ * balance, the logo, the mascot, and its actions.
  *
  * Progress moved to `statistics`, the starter list to `puzzles`, and photo import
  * to `library`'s My Photos tab — each to the screen that already owns that data.
  * Home previously carried all of it and read as a dashboard rather than a
  * landing screen.
+ *
+ * The "My Album" tile is gone too, on request. It was only a second route into
+ * `library`, which the tab bar already reaches from every screen.
  */
 export function HomeScreen() {
   const [data, setData] = useState<HomeData>(EMPTY);
@@ -134,14 +137,7 @@ export function HomeScreen() {
               }}
             />
 
-            <View style={styles.quickRow}>
-              <QuickLink
-                art="calendar"
-                label="Daily Puzzle"
-                onPress={() => router.push('/daily')}
-              />
-              <QuickLink art="album" label="My Album" onPress={() => router.push('/library')} />
-            </View>
+            <QuickLink art="calendar" label="Daily Puzzle" onPress={() => router.push('/daily')} />
           </EnterView>
         </View>
       </SafeAreaView>
@@ -160,17 +156,19 @@ function QuickLink({ art, label, onPress }: { art: ArtName; label: string; onPre
       {...pressHandlers}
       style={styles.quickLink}
     >
-      <PopSurface fill={colors.surface} radius={radii.md}>
-        {/* Icon above the label, not beside it. Side by side, the fixed 30pt icon
-            and its gap took 38 of the tile's ~148pt and the label got what was
-            left — enough for "Daily Puzzle" at rest, but not once the system font
-            scale rose above about 1.2x, because the text scales and the icon does
-            not. It then ellipsised to "Daily Puz…". Stacking hands the label the
-            tile's full width, so the words fit with room to spare.
+      <PopSurface fill={colors.surface} radius={radii.md} clip={false}>
+        {/* Icon above the label rather than beside it, matching `PopTabBar`.
+            Side by side, the fixed 30pt icon and its gap ate into the label's
+            width, and the label was the thing that then got squeezed.
 
-            No `numberOfLines` either: unbounded, an extreme font scale wraps the
-            label onto a second line, which still shows every letter. That is the
-            point — a cut word tells the reader nothing. */}
+            The tile is now full width — Play's own edges — so "Daily Puzzle" has
+            roughly 340pt for a word that needs about 95pt at 14pt. There is no
+            width pressure left to manage, which is why there is no `numberOfLines`
+            and no `flexShrink` here: nothing should ever be truncating this, and if
+            an extreme font scale does wrap it, two full lines beat one cut word.
+
+            `clip={false}` for the same reason as the tab bar: the surface's clip
+            cuts descenders, and nothing in this tile needs clipping to the radius. */}
         <View style={styles.quickLinkInner}>
           <PressDarken progress={progress} radius={radii.md} />
           <Art name={art} size={30} />
@@ -223,8 +221,9 @@ const styles = StyleSheet.create({
   mascotWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   actions: { alignSelf: 'stretch', gap: spacing.md },
   fullWidth: { alignSelf: 'stretch' },
-  quickRow: { flexDirection: 'row', gap: spacing.md, alignSelf: 'stretch' },
-  quickLink: { flex: 1 },
+  // Full width, so the tile shares Play's exact edges. It was `flex: 1` inside a
+  // two-tile row until "My Album" was removed; alone in the column it stretches.
+  quickLink: { alignSelf: 'stretch' },
   quickLinkInner: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -232,13 +231,14 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
   },
-  // `paddingHorizontal` is ink room for the trailing glyph, as on `PopButton` — see
-  // the note on its `label` style. `textAlign` because the label may wrap.
+  // `lineHeight` and `paddingHorizontal` are room for the glyphs, not spacing — see
+  // the note on `PopButton`'s `label`. `textAlign` because the label may wrap.
   quickLinkLabel: {
     ...typography.bodyStrong,
     fontSize: 14,
     color: colors.ink,
-    paddingHorizontal: 2,
+    lineHeight: 20,
+    paddingHorizontal: 6,
     textAlign: 'center',
   },
 });

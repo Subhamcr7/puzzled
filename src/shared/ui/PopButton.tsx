@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 
 import { colors, radii, shadow, spacing, typography } from '@/shared/theme';
@@ -80,23 +80,32 @@ function radialFace([highlight, mid, rim]: readonly [string, string, string]): s
   return `radial-gradient(ellipse at 50% 20%, ${highlight} 0%, ${mid} 50%, ${rim} 100%)`;
 }
 
+/**
+ * `lineHeight` is set generously against each `fontSize` — about 1.4x — rather than
+ * left to the font's own metrics. A `y` needs room below the baseline, and a line box
+ * that fits the x-height and no more clips the tail, which is the likeliest reason
+ * "Play" rendered as "Pla".
+ */
 const SIZE = {
   sm: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     fontSize: 15,
+    lineHeight: 21,
     radius: radii.sm,
   },
   md: {
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     fontSize: 18,
+    lineHeight: 25,
     radius: radii.md,
   },
   lg: {
     paddingVertical: spacing.md + 4,
     paddingHorizontal: spacing.xl,
     fontSize: 22,
+    lineHeight: 30,
     radius: radii.lg,
   },
 } as const;
@@ -157,13 +166,39 @@ export function PopButton({
             paddingVertical: metrics.paddingVertical,
             paddingHorizontal: metrics.paddingHorizontal,
           },
-          gradient && { experimental_backgroundImage: radialFace(gradient) },
           faceStyle,
         ]}
       >
+        {/* The gradient is its own layer rather than the face's own background.
+            `experimental_backgroundImage` is as experimental as its name says, and on
+            the face it parents the label — which makes it a suspect for clipping its
+            own children, and it is the only thing separating Play from every other
+            button in the app whose label renders fine. Drawn as an overlay it looks
+            identical and parents nothing. Same reasoning as `PressDarken` below. */}
+        {gradient ? (
+          <View
+            pointerEvents="none"
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                borderRadius: metrics.radius,
+                experimental_backgroundImage: radialFace(gradient),
+              },
+            ]}
+          />
+        ) : null}
         <PressDarken progress={progress} radius={metrics.radius} />
         {icon}
-        <Text style={[styles.label, { color: TONE_LABEL[tone], fontSize: metrics.fontSize }]}>
+        <Text
+          style={[
+            styles.label,
+            {
+              color: TONE_LABEL[tone],
+              fontSize: metrics.fontSize,
+              lineHeight: metrics.lineHeight,
+            },
+          ]}
+        >
           {label}
         </Text>
       </Animated.View>
@@ -179,12 +214,22 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     boxShadow: shadow.button,
   },
-  // `paddingHorizontal` is ink room, not spacing. Android measures a text node by
-  // its glyphs' advance widths and then clips to that box, so a final letter whose
-  // ink overhangs its advance — the tail on Fredoka's `y`, which is why "Play"
-  // rendered as "Pla" — falls outside the paint area and is dropped. A couple of
-  // points either side gives the overhang somewhere to land. Symmetric so the label
-  // stays optically centred.
-  label: { fontFamily: typography.heading.fontFamily, paddingHorizontal: 3 },
+  // "Play" rendered as "Pla", and the first attempt at this blamed horizontal
+  // advance-width clipping alone — 3pt of `paddingHorizontal` — which changed nothing
+  // on device. So the label now gets room on both axes and nothing upstream is left
+  // able to squeeze it:
+  //
+  //   - `lineHeight` (in `SIZE`) well above the font size, for the `y` tail.
+  //   - `paddingHorizontal` as ink room for a glyph overhanging its advance width.
+  //   - `flexShrink: 0`, because the face is a flex row: with an icon beside it the
+  //     label is otherwise a candidate for shrinking, and a shrunk text node clips
+  //     rather than scrolls.
+  //
+  // Symmetric padding so the label stays optically centred.
+  label: {
+    fontFamily: typography.heading.fontFamily,
+    paddingHorizontal: 8,
+    flexShrink: 0,
+  },
   disabled: { opacity: 0.45 },
 });

@@ -192,7 +192,7 @@ export const motion = {
    *
    * Fonts often resolve in well under 100ms from cache, and without a floor the
    * loading screen appears for two frames — which reads as a glitch rather than
-   * as a greeting. Long enough for one bob of the bear.
+   * as a greeting. Long enough for a full beat of the loading dots.
    */
   loaderMinimum: 1100,
 } as const;

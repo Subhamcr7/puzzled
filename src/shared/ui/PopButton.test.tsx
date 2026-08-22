@@ -86,11 +86,20 @@ describe('PopButton', () => {
     expect(TONE_FILL[tone]).toBe(TONE_GRADIENT[tone]?.[1]);
   });
 
-  it('gives the label ink room so the trailing glyph is not clipped', () => {
-    // Android clips a text node to its glyphs' advance widths, dropping ink that
-    // overhangs — the tail on Fredoka's `y`, which rendered "Play" as "Pla".
-    const { getByText } = render(<PopButton label="Play" />);
+  // "Play" rendered as "Pla" on device. The first attempt blamed horizontal
+  // advance-width clipping and added `paddingHorizontal` alone; that shipped and
+  // changed nothing, so the cause is not settled and the label is given room on both
+  // axes instead. None of this proves the glyph draws — no test can see that — it
+  // only pins the three properties that would otherwise silently regress.
+  it('gives the label room on both axes so the trailing glyph is not clipped', () => {
+    const { getByText } = render(<PopButton label="Play" size="lg" />);
     const label = StyleSheet.flatten(getByText('Play').props.style);
+
+    // Ink room for a glyph overhanging its advance width.
     expect(label.paddingHorizontal).toBeGreaterThan(0);
+    // Somewhere for the `y` tail to go: the line box must exceed the font size.
+    expect(label.lineHeight).toBeGreaterThan(label.fontSize);
+    // The face is a flex row, so an icon beside the label must never squeeze it.
+    expect(label.flexShrink).toBe(0);
   });
 });
