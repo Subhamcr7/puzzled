@@ -1,18 +1,12 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import {
-  ImageBackground,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getWalletRepository, listCatalog } from '@/data';
 import { type PuzzleDefinition } from '@/game-engine';
 import { type ArtName } from '@/shared/art';
+import { FONT_SCALE } from '@/shared/font-scale';
 import { colors, radii, shadow, spacing, typography } from '@/shared/theme';
 import {
   Art,
@@ -27,6 +21,16 @@ import {
 } from '@/shared/ui';
 
 const HOME_BACKGROUND = require('../../../assets/backgrounds/home.png');
+
+/**
+ * Quick-link label text style, with the startup font scale baked in. Module-level
+ * and therefore identity-stable across renders — see `@/shared/font-scale` for
+ * why these values must never change after mount.
+ */
+const SCALED_LABEL = {
+  fontSize: 14 * FONT_SCALE,
+  lineHeight: Math.round(20 * FONT_SCALE),
+};
 
 /**
  * Bear size, in points. Kept equal to `imageWidth` on the splash screen in
@@ -158,10 +162,6 @@ export function HomeScreen() {
 
 function QuickLink({ art, label, onPress }: { art: ArtName; label: string; onPress: () => void }) {
   const { progress, pressHandlers } = usePressProgress();
-  // Font scaling is done BY HAND (see `PopButton`): Android's `allowFontScaling`
-  // path paints only the first few glyphs of an auto-scaled label on
-  // RN 0.86/Fabric — "Daily Puzzle" rendered as "Daily" above 1.0x font scale.
-  const { fontScale } = useWindowDimensions();
 
   return (
     <Pressable
@@ -187,16 +187,7 @@ function QuickLink({ art, label, onPress }: { art: ArtName; label: string; onPre
         <View style={styles.quickLinkInner}>
           <PressDarken progress={progress} radius={radii.md} />
           <Art name={art} size={30} />
-          <Text
-            allowFontScaling={false}
-            style={[
-              styles.quickLinkLabel,
-              {
-                fontSize: 14 * fontScale,
-                lineHeight: Math.round(20 * fontScale),
-              },
-            ]}
-          >
+          <Text allowFontScaling={false} style={[styles.quickLinkLabel, SCALED_LABEL]}>
             {label}
           </Text>
         </View>
@@ -259,11 +250,10 @@ const styles = StyleSheet.create({
   },
   // `lineHeight` and `paddingHorizontal` are room for the glyphs, not spacing — see
   // the note on `PopButton`'s `label`. `textAlign` because the label may wrap.
-  // The base `lineHeight` (20) is applied inline in the component, scaled by the
-  // system font scale — a fixed line box around a scaled font clips descenders.
+  // The base sizes come from the module-level `SCALED_LABEL` so label props stay
+  // identity-stable.
   quickLinkLabel: {
     ...typography.bodyStrong,
-    fontSize: 14,
     color: colors.ink,
     paddingHorizontal: 6,
     textAlign: 'center',

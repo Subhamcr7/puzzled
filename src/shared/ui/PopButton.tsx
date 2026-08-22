@@ -1,15 +1,8 @@
 import { type ReactNode } from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  useWindowDimensions,
-  type ViewStyle,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 
+import { FONT_SCALE } from '@/shared/font-scale';
 import { colors, radii, shadow, spacing, typography } from '@/shared/theme';
 
 import { PressDarken, usePressProgress } from './PressDarken';
@@ -94,10 +87,9 @@ function radialFace([highlight, mid, rim]: readonly [string, string, string]): s
  * that fits the x-height and no more clips the tail, which is the likeliest reason
  * "Play" rendered as "Pla".
  *
- * These are **base** values, not final ones. Android scales a label's `fontSize`
- * with the system font scale but leaves an explicit `lineHeight` untouched — so at
- * 1.3x these fixed values become the clip they were added to prevent, and the
- * component multiplies them by `fontScale` before applying.
+ * These are **base** values. The component applies them multiplied by the
+ * startup font scale (see `@/shared/font-scale`) through identity-stable module
+ * styles, so scaling survives without ever mutating label props after mount.
  */
 const SIZE = {
   sm: {
@@ -122,6 +114,21 @@ const SIZE = {
     radius: radii.lg,
   },
 } as const;
+
+/**
+ * Label text styles per size, with the startup font scale baked in. Defined at
+ * module level so the objects are identity-stable across renders: label props
+ * must never change after mount (see `@/shared/font-scale`).
+ */
+const SCALED_LABEL = Object.fromEntries(
+  (Object.keys(SIZE) as (keyof typeof SIZE)[]).map((size) => [
+    size,
+    {
+      fontSize: SIZE[size].fontSize * FONT_SCALE,
+      lineHeight: Math.round(SIZE[size].lineHeight * FONT_SCALE),
+    },
+  ]),
+) as Record<keyof typeof SIZE, { fontSize: number; lineHeight: number }>;
 
 interface PopButtonProps {
   label: string;
@@ -148,14 +155,6 @@ export function PopButton({
   const { progress, pressHandlers } = usePressProgress();
   const metrics = SIZE[size];
   const gradient = TONE_GRADIENT[tone];
-  // Font scaling is done BY HAND here rather than left to Android's
-  // `allowFontScaling`. On RN 0.86/Fabric, a label auto-scaled above 1.0x lays its
-  // view out correctly but paints only the first few glyphs — "Play" rendered as
-  // "Pla", tab labels as "Hom"/"Librar" — reproduced on-device and measured: the
-  // accessibility tree reported the full string in a full-size box while the
-  // pixels stopped mid-word. Passing `allowFontScaling={false}` and multiplying
-  // sizes by `fontScale` ourselves bypasses that code path and scales identically.
-  const { fontScale } = useWindowDimensions();
 
   // Chunky Pop translated the face into a hard sibling shadow. With a blurred
   // shadow there is nothing to translate into, so the press reads as the button
@@ -212,14 +211,7 @@ export function PopButton({
         {icon}
         <Text
           allowFontScaling={false}
-          style={[
-            styles.label,
-            {
-              color: TONE_LABEL[tone],
-              fontSize: metrics.fontSize * fontScale,
-              lineHeight: Math.round(metrics.lineHeight * fontScale),
-            },
-          ]}
+          style={[styles.label, SCALED_LABEL[size], { color: TONE_LABEL[tone] }]}
         >
           {label}
         </Text>

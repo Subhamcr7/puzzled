@@ -1,9 +1,10 @@
 import { Tabs } from 'expo-router';
 import { type ComponentProps } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { type ArtName } from '@/shared/art';
+import { FONT_SCALE } from '@/shared/font-scale';
 import { colors, radii, spacing, typography } from '@/shared/theme';
 
 import { Art } from './Art';
@@ -50,6 +51,16 @@ const ITEM_GAP = 2;
 const BAR_HEIGHT = spacing.sm + ICON_SIZE + ITEM_GAP + LABEL_LINE + spacing.xs;
 
 /**
+ * Tab-label text style, with the startup font scale baked in. Module-level and
+ * therefore identity-stable across renders — see `@/shared/font-scale` for why
+ * these values must never change after mount.
+ */
+const SCALED_LABEL = {
+  fontSize: 11 * FONT_SCALE,
+  lineHeight: Math.round(16 * FONT_SCALE),
+};
+
+/**
  * Vertical space a screen under `(tabs)/` must reserve at the bottom of its
  * scroll content, because the bar floats over the scene rather than sitting
  * below it.
@@ -71,10 +82,6 @@ export function useTabBarSpace(): number {
 /** Puzzle Journey bottom navigation, used as the custom `tabBar` for Tabs. */
 export function PopTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
-  // Font scaling is done BY HAND (see `PopButton`): Android's `allowFontScaling`
-  // path paints only the first few glyphs of an auto-scaled label on
-  // RN 0.86/Fabric — "Library" rendered as "Librar" above 1.0x font scale.
-  const { fontScale } = useWindowDimensions();
 
   return (
     <View
@@ -121,11 +128,8 @@ export function PopTabBar({ state, navigation }: TabBarProps) {
                 allowFontScaling={false}
                 style={[
                   styles.label,
-                  {
-                    color: focused ? meta.tint : colors.inkMuted,
-                    fontSize: 11 * fontScale,
-                    lineHeight: Math.round(16 * fontScale),
-                  },
+                  SCALED_LABEL,
+                  { color: focused ? meta.tint : colors.inkMuted },
                 ]}
               >
                 {meta.label}
@@ -186,9 +190,8 @@ const styles = StyleSheet.create({
     // No `letterSpacing`, deliberately: Android appends tracking after the final
     // glyph, which only widens the gap between the ink and whatever clips it.
     //
-    // `lineHeight` is not set here: the base value (16) is applied inline in the
-    // component, scaled by the system font scale — a fixed line box around a
-    // scaled font is itself a way to clip a descender.
+    // The base `lineHeight` (16) is not set here: the scaled value comes from the
+    // module-level `SCALED_LABEL` so label props stay identity-stable.
     paddingHorizontal: 6,
   },
 });
