@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { type ComponentProps } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { type ArtName } from '@/shared/art';
@@ -71,6 +71,10 @@ export function useTabBarSpace(): number {
 /** Puzzle Journey bottom navigation, used as the custom `tabBar` for Tabs. */
 export function PopTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
+  // `fontSize` scales with the system font scale; an explicit `lineHeight` does
+  // not. Scaling the line box with it keeps every glyph inside it at any setting —
+  // the same defect fixed on `PopButton`'s label.
+  const { fontScale } = useWindowDimensions();
 
   return (
     <View
@@ -113,7 +117,15 @@ export function PopTabBar({ state, navigation }: TabBarProps) {
                   unfocused tabs dim their art rather than recolouring it. */}
               {focused ? <View style={styles.pill} /> : null}
               <Art name={meta.art} size={26} style={focused ? undefined : styles.dimmed} />
-              <Text style={[styles.label, { color: focused ? meta.tint : colors.inkMuted }]}>
+              <Text
+                style={[
+                  styles.label,
+                  {
+                    color: focused ? meta.tint : colors.inkMuted,
+                    lineHeight: Math.round(16 * fontScale),
+                  },
+                ]}
+              >
                 {meta.label}
               </Text>
             </Pressable>
@@ -171,7 +183,10 @@ const styles = StyleSheet.create({
     //
     // No `letterSpacing`, deliberately: Android appends tracking after the final
     // glyph, which only widens the gap between the ink and whatever clips it.
-    lineHeight: 16,
+    //
+    // `lineHeight` is not set here: the base value (16) is applied inline in the
+    // component, scaled by the system font scale — a fixed line box around a
+    // scaled font is itself a way to clip a descender.
     paddingHorizontal: 6,
   },
 });

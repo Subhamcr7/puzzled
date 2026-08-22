@@ -1,5 +1,13 @@
 import { type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  useWindowDimensions,
+  type ViewStyle,
+} from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 
 import { colors, radii, shadow, spacing, typography } from '@/shared/theme';
@@ -85,6 +93,11 @@ function radialFace([highlight, mid, rim]: readonly [string, string, string]): s
  * left to the font's own metrics. A `y` needs room below the baseline, and a line box
  * that fits the x-height and no more clips the tail, which is the likeliest reason
  * "Play" rendered as "Pla".
+ *
+ * These are **base** values, not final ones. Android scales a label's `fontSize`
+ * with the system font scale but leaves an explicit `lineHeight` untouched — so at
+ * 1.3x these fixed values become the clip they were added to prevent, and the
+ * component multiplies them by `fontScale` before applying.
  */
 const SIZE = {
   sm: {
@@ -135,6 +148,9 @@ export function PopButton({
   const { progress, pressHandlers } = usePressProgress();
   const metrics = SIZE[size];
   const gradient = TONE_GRADIENT[tone];
+  // `fontSize` scales with the system font scale; an explicit `lineHeight` does
+  // not. Scaling the line box with it keeps every glyph inside it at any setting.
+  const { fontScale } = useWindowDimensions();
 
   // Chunky Pop translated the face into a hard sibling shadow. With a blurred
   // shadow there is nothing to translate into, so the press reads as the button
@@ -195,7 +211,7 @@ export function PopButton({
             {
               color: TONE_LABEL[tone],
               fontSize: metrics.fontSize,
-              lineHeight: metrics.lineHeight,
+              lineHeight: Math.round(metrics.lineHeight * fontScale),
             },
           ]}
         >

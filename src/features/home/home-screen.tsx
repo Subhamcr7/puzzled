@@ -1,6 +1,13 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ImageBackground,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getWalletRepository, listCatalog } from '@/data';
@@ -147,6 +154,10 @@ export function HomeScreen() {
 
 function QuickLink({ art, label, onPress }: { art: ArtName; label: string; onPress: () => void }) {
   const { progress, pressHandlers } = usePressProgress();
+  // `fontSize` scales with the system font scale; an explicit `lineHeight` does
+  // not. Scaling the line box with it keeps every glyph inside it at any setting —
+  // the same defect fixed on `PopButton`'s and `PopTabBar`'s labels.
+  const { fontScale } = useWindowDimensions();
 
   return (
     <Pressable
@@ -172,7 +183,9 @@ function QuickLink({ art, label, onPress }: { art: ArtName; label: string; onPre
         <View style={styles.quickLinkInner}>
           <PressDarken progress={progress} radius={radii.md} />
           <Art name={art} size={30} />
-          <Text style={styles.quickLinkLabel}>{label}</Text>
+          <Text style={[styles.quickLinkLabel, { lineHeight: Math.round(20 * fontScale) }]}>
+            {label}
+          </Text>
         </View>
       </PopSurface>
     </Pressable>
@@ -233,11 +246,12 @@ const styles = StyleSheet.create({
   },
   // `lineHeight` and `paddingHorizontal` are room for the glyphs, not spacing — see
   // the note on `PopButton`'s `label`. `textAlign` because the label may wrap.
+  // The base `lineHeight` (20) is applied inline in the component, scaled by the
+  // system font scale — a fixed line box around a scaled font clips descenders.
   quickLinkLabel: {
     ...typography.bodyStrong,
     fontSize: 14,
     color: colors.ink,
-    lineHeight: 20,
     paddingHorizontal: 6,
     textAlign: 'center',
   },
