@@ -593,6 +593,15 @@ where the plugin does nothing, and to gate the splash.
 This is app-wide: every `Text` in the app had the same latent bug, not just the three
 labels that were reported.
 
+### Open risk — iOS
+
+The plugin embeds the files on iOS too, but there the family name comes from inside the
+font file rather than from its name, so `Fredoka_600SemiBold` will not resolve to the
+embedded copy — iOS still goes through `useFonts` and therefore still has the race.
+Nothing has been measured there, because the project has no iOS build. Whoever adds one
+should check the labels at a raised **Larger Text** setting first, and if they clip, read
+the real family names with `Font.getLoadedFonts()` and add an `ios.fonts` entry.
+
 ### Files changed
 
 | File                          | Change                                                                 |
