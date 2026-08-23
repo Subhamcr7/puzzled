@@ -13,6 +13,16 @@ import { LoadingScreen } from '@/shared/ui';
 void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  /*
+   * The families are also embedded natively by the `expo-font` config plugin in
+   * `app.json`, and on Android that is the copy which matters: a family that only
+   * arrives at runtime is registered *after* Fabric has already measured the first
+   * labels against the fallback face, and the wider real face then paints outside
+   * that box — "Play" drew as "Pla". See `src/shared/fonts.test.ts`.
+   *
+   * This hook stays for web, where the plugin does nothing, and it is what gates
+   * the splash below. On native it now finds the fonts already present.
+   */
   const [ready, error] = useFonts({
     Fredoka_600SemiBold,
     Fredoka_700Bold,

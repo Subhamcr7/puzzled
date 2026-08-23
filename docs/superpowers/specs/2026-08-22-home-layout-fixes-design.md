@@ -543,3 +543,75 @@ scales in the first place.
 | `npm run typecheck` / lint / format | clean                                                                                                             |
 | `npm test`                          | 194 passed (two obsolete splash assertions retired)                                                               |
 | Device pass                         | done as part of the fix loop: APK installed over adb, `font_scale 1.3` set, screenshots verified before reporting |
+
+## 12. Revision — root cause found: the font was loading after the measure
+
+Everything above §12 treats the clipping as a sizing problem. It was not. Six fixes
+across four commits (padding, line heights, `clip={false}`, scaled line boxes, manual
+scaling, frozen module-level metrics) all shipped to a device and all failed, which
+was itself the clue: no style could reach it because no style was causing it.
+
+### The experiment that settled it
+
+The dev-client build had always rendered whole words at `font_scale 1.3` while a
+release APK of the same commit clipped them. That was read as "release-only bug" and
+blamed on Fabric. The difference was tested properly instead: Metro was started with
+`--no-dev --minify`, which serves a `dev=false`, minified, Hermes-bytecode bundle —
+release-equivalent JS — to the dev client. It rendered **whole words**. So JS mode,
+minification and bytecode were all exonerated, leaving the asset path.
+
+Then the two screenshots were cropped and compared side by side, which should have
+happened on day one:
+
+| Build                           | Painted glyphs | Typeface                                         |
+| ------------------------------- | -------------- | ------------------------------------------------ |
+| dev client (Metro, any JS mode) | `Play`         | thin, double-story `a` — the **system fallback** |
+| release APK                     | `Pla`          | chunky, single-story `a` — **Fredoka**           |
+
+The dev build was never rendering the app's fonts at all. It "worked" because
+measure and paint agreed on the fallback face.
+
+### Mechanism
+
+`useFonts` registers a family _after_ JS starts. In a release APK the first labels are
+measured before that registration completes, so their boxes are sized to the fallback
+face; the wider real face then paints into a box that Fabric never remeasures, and the
+overflow is cut. The size dependency follows: the fallback-to-Fredoka width difference
+is a percentage of the font size, so at 1.0x the label's own `paddingHorizontal`
+absorbed it and above 1.0x it did not. Longer strings lost more — `Home` → `Hom`,
+`Puzzles` → `Puzzl`, `Daily Puzzle` → `Daily`. Every earlier theory (descenders,
+`overflow: hidden`, gradient layers, prop identity, RN's font-scale path) is dead.
+
+### Fix
+
+Remove the window instead of padding around it. The `expo-font` config plugin now
+embeds all five families, so prebuild copies them to
+`android/app/src/main/assets/fonts/` and Android resolves `fontFamily: "X"` from
+`assets/fonts/X.ttf` synchronously, before the first measure. `useFonts` stays for web,
+where the plugin does nothing, and to gate the splash.
+
+This is app-wide: every `Text` in the app had the same latent bug, not just the three
+labels that were reported.
+
+### Files changed
+
+| File                          | Change                                                                 |
+| ----------------------------- | ---------------------------------------------------------------------- |
+| `app.json`                    | `expo-font` plugin embeds the five `.ttf` files                        |
+| `src/shared/fonts.test.ts`    | New: pins each theme family to an embedded file whose basename matches |
+| `src/app/_layout.tsx`         | Notes why both loading paths exist                                     |
+| `src/shared/ui/PopTabBar.tsx` | `LABEL_LINE` scales with `FONT_SCALE` so the bar grows with its labels |
+| `src/shared/font-scale.ts`    | Comment corrected — the freeze is not a workaround for the clipping    |
+| `src/shared/ui/PopButton.tsx` | Comments corrected                                                     |
+
+The manual scaling from §11 is kept: it is not a workaround for this bug, and it makes
+the tab bar's height and its label's line box derive from one constant.
+
+### Verification
+
+| Check                               | Status                                                             |
+| ----------------------------------- | ------------------------------------------------------------------ |
+| `npm run typecheck` / lint / format | clean                                                              |
+| `npm test`                          | 205 passed (11 new font-embedding assertions)                      |
+| `npx expo prebuild`                 | five `.ttf` files land in `assets/fonts/` under their family names |
+| Device pass                         | release APK at `font_scale 1.3`                                    |

@@ -38,15 +38,14 @@ const TABS: Record<string, { art: ArtName; label: string; tint: string }> = {
  */
 const ICON_SIZE = 26;
 /**
- * Vertical room for the label line.
+ * Vertical room for the label line, scaled by the same startup constant as the
+ * label itself so the bar grows with the text instead of being overflowed by it.
  *
- * 18, not the 14 this used to be. An 11pt Nunito Bold line box is taller than 11pt
- * once Android's `includeFontPadding` is counted, so 14 left the descender hanging
- * outside the budget — and `PopSurface` used to enforce that budget with
- * `overflow: hidden`, which is the likeliest reason "Library" rendered as "Librar".
- * The clip is now off (see the `clip` prop below); this gives the line room even so.
+ * 18 rather than the 14 this used to be: an 11pt Nunito Bold line box is taller
+ * than 11pt once Android's `includeFontPadding` is counted, so 14 left the
+ * descender hanging outside the budget.
  */
-const LABEL_LINE = 18;
+const LABEL_LINE = Math.round(18 * FONT_SCALE);
 const ITEM_GAP = 2;
 const BAR_HEIGHT = spacing.sm + ICON_SIZE + ITEM_GAP + LABEL_LINE + spacing.xs;
 
@@ -178,20 +177,20 @@ const styles = StyleSheet.create({
   label: {
     ...typography.caption,
     fontSize: 11,
-    // "Library" lost its `y` here, and the cause was never settled — an earlier
-    // attempt blamed horizontal advance-width clipping, added `paddingHorizontal`,
-    // and changed nothing on device. So this gives the label room on *both* axes and
-    // removes the clip that could enforce either:
+    // "Library" rendered as "Librar" because the family was still loading when
+    // Fabric measured this line: the box was sized for the fallback face and
+    // painted with Nunito, which is wider. The families are embedded at build
+    // time now (`src/shared/fonts.test.ts`), so measure and paint agree.
     //
-    //   - `lineHeight` well above the font size, so the descender has somewhere to go.
-    //   - `paddingHorizontal` as ink room for a tail overhanging its advance width.
-    //   - `clip={false}` on the `PopSurface` above, plus `LABEL_LINE` raised to 18.
+    // The room below is kept regardless — a descender needs somewhere to go, and
+    // a glyph can overhang its advance width:
+    //
+    //   - `lineHeight` above the font size, from the module-level `SCALED_LABEL`.
+    //   - `paddingHorizontal` as ink room at both ends.
+    //   - `clip={false}` on the `PopSurface` above.
     //
     // No `letterSpacing`, deliberately: Android appends tracking after the final
     // glyph, which only widens the gap between the ink and whatever clips it.
-    //
-    // The base `lineHeight` (16) is not set here: the scaled value comes from the
-    // module-level `SCALED_LABEL` so label props stay identity-stable.
     paddingHorizontal: 6,
   },
 });

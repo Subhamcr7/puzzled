@@ -83,13 +83,10 @@ function radialFace([highlight, mid, rim]: readonly [string, string, string]): s
 
 /**
  * `lineHeight` is set generously against each `fontSize` — about 1.4x — rather than
- * left to the font's own metrics. A `y` needs room below the baseline, and a line box
- * that fits the x-height and no more clips the tail, which is the likeliest reason
- * "Play" rendered as "Pla".
+ * left to the font's own metrics, so a `y` has room below the baseline.
  *
- * These are **base** values. The component applies them multiplied by the
- * startup font scale (see `@/shared/font-scale`) through identity-stable module
- * styles, so scaling survives without ever mutating label props after mount.
+ * These are **base** values. The component applies them multiplied by the startup
+ * font scale (see `@/shared/font-scale`) through module-level styles.
  */
 const SIZE = {
   sm: {
@@ -116,9 +113,8 @@ const SIZE = {
 } as const;
 
 /**
- * Label text styles per size, with the startup font scale baked in. Defined at
- * module level so the objects are identity-stable across renders: label props
- * must never change after mount (see `@/shared/font-scale`).
+ * Label text styles per size, with the startup font scale baked in. Module level
+ * so the objects are shared rather than rebuilt per render.
  */
 const SCALED_LABEL = Object.fromEntries(
   (Object.keys(SIZE) as (keyof typeof SIZE)[]).map((size) => [
@@ -228,10 +224,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     boxShadow: shadow.button,
   },
-  // "Play" rendered as "Pla", and the first attempt at this blamed horizontal
-  // advance-width clipping alone — 3pt of `paddingHorizontal` — which changed nothing
-  // on device. So the label now gets room on both axes and nothing upstream is left
-  // able to squeeze it:
+  // "Play" rendered as "Pla" because Fredoka had not been registered yet when
+  // Fabric measured this label: the box was sized for the fallback face and then
+  // painted with the wider Fredoka. The families are embedded at build time now
+  // (`src/shared/fonts.test.ts`), so measure and paint use the same typeface.
+  //
+  // The room below is kept regardless, since none of it costs anything:
   //
   //   - `lineHeight` (in `SIZE`) well above the font size, for the `y` tail.
   //   - `paddingHorizontal` as ink room for a glyph overhanging its advance width.
