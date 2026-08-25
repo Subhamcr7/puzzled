@@ -9,14 +9,57 @@ import { type PieceLocalPath } from '@/game-engine';
  */
 
 /**
- * Slot edge in points, derived so exactly `FX.tray.visibleColumns` fit the narrowest
- * phone width this app targets. Pieces are deliberately smaller than they once were:
- * at the old size a fourth piece was always half off-screen.
+ * Slot edge in points — the basis the largest piece is scaled against, and nothing
+ * else.
+ *
+ * This used to double as the tray's pitch (`TRAY_SLOT + SLOT_GAP` set the distance
+ * between slot centres), which is what made the tray look mostly empty. The largest
+ * piece fills only `TRAY_SLOT_FILL` of the slot, so every slot carried
+ * `TRAY_SLOT * (1 - TRAY_SLOT_FILL)` — about 13pt — of dead margin *inside* it, on
+ * top of the explicit gap between slots. Pitch is now `TRAY_PITCH`, measured from
+ * the piece itself, and this value governs the piece's size alone.
+ *
+ * Do not change this or `TRAY_SLOT_FILL` to adjust spacing: their product is the
+ * drawn piece size, which `tray-fit.test.ts` pins.
  */
 export const TRAY_SLOT = 92;
 
 /** Fraction of a slot the largest piece is allowed to fill. */
 export const TRAY_SLOT_FILL = 0.86;
+
+/**
+ * The largest piece's drawn extent in points — the real footprint of a tray piece.
+ *
+ * Every piece shares one scale (see `trayThumbScale`), so this is the worst case: a
+ * piece with opposing tabs. Most pieces measure well under it, which is why the tray
+ * reads as sparser than the arithmetic suggests.
+ */
+export const TRAY_PIECE = TRAY_SLOT * TRAY_SLOT_FILL;
+
+/**
+ * Clear space between two neighbouring pieces, in points.
+ *
+ * Not cosmetic: this is the lane you drag to scroll the strip. The tray hit-test
+ * treats a touch on a piece as a grab and a touch beside one as a scroll, so with no
+ * channel the tray can only be moved by its slider — see `TRAY_GRAB_HALF` in
+ * `puzzle-board.tsx`, which documents that exact regression.
+ *
+ * 5 is the agreed floor. It was ~19pt, which fit only 3.68 of the intended 4 columns
+ * in the board shell and left the fourth piece clipped.
+ */
+export const TRAY_CHANNEL = 5;
+
+/**
+ * Distance between neighbouring slot centres, on both axes.
+ *
+ * Derived from the piece rather than the slot so the gap between pieces is stated
+ * once, directly, instead of emerging from a slot's leftover margin plus a separate
+ * inter-slot gap.
+ */
+export const TRAY_PITCH = TRAY_PIECE + TRAY_CHANNEL;
+
+/** Padding between the tray shelf's edge and its piece grid, in points. */
+export const TRAY_PAD = 8;
 
 /**
  * The board mat's drop shadow, in points.
@@ -40,6 +83,21 @@ export const BOARD_SHADOW_REACH = BOARD_SHADOW.dy + BOARD_SHADOW.blur * 2;
  * completely on its own before the clip is reached, so nothing needs to be cut.
  */
 export const TRAY_GAP = 28;
+
+/**
+ * Total height of the tray strip: padding, the piece rows, then the slider.
+ *
+ * Rows are `TRAY_PITCH` tall rather than `TRAY_SLOT` tall. Sizing the band by the
+ * slot padded the strip by the slot's unused margin twice over — once above the top
+ * row and once below the bottom — which is height the board could have had.
+ *
+ * Takes the slider's dimensions as arguments rather than importing `FX`: `board-fx.ts`
+ * is a Skia-adjacent module, and keeping this file free of that import is what lets
+ * `tray-fit.test.ts` exercise this arithmetic at all.
+ */
+export function trayHeight(rows: number, sliderGap: number, sliderHeight: number): number {
+  return TRAY_PAD * 2 + rows * TRAY_PITCH + sliderGap + sliderHeight;
+}
 
 /**
  * The largest extent any of these pieces actually occupies, in board units.

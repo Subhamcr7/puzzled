@@ -63,7 +63,11 @@ import {
   clampTrayScroll,
   maxPieceExtent,
   TRAY_GAP,
+  TRAY_PAD,
+  TRAY_PIECE,
+  TRAY_PITCH,
   TRAY_SLOT,
+  trayHeight,
   trayThumbScale,
 } from './tray-geometry';
 import { useBoardCamera } from './use-board-camera';
@@ -86,21 +90,14 @@ const BOARD_PADDING = 12;
 function boardCornerRadius(cellSize: number): number {
   return Math.min(FX.boardCornerRadius, cellSize * 0.45);
 }
-const TRAY_PAD = 12;
 /**
  * Corner radius of the tray shelf, in *screen points* — the tray sits outside the
  * board's scaled group, so this is unrelated to `boardCornerRadius`'s board units
  * despite both having read 20.
  */
 const TRAY_RADIUS = 20;
-const SLOT_GAP = 6;
-/** Tray strip height: two rows of slots, then a gap, then the slider. */
-const TRAY_HEIGHT =
-  TRAY_PAD * 2 +
-  FX.tray.rows * TRAY_SLOT +
-  (FX.tray.rows - 1) * SLOT_GAP +
-  FX.tray.sliderGap +
-  FX.tray.sliderHeight;
+/** Tray strip height: the piece rows, then a gap, then the slider. */
+const TRAY_HEIGHT = trayHeight(FX.tray.rows, FX.tray.sliderGap, FX.tray.sliderHeight);
 /**
  * Vertical space the tray needs below the board.
  *
@@ -127,20 +124,21 @@ function confettiColors(theme: Theme): string[] {
 /** Pointer velocity (px/s) that maps to the full `FX.maxTiltDeg` tilt while dragging. */
 const TILT_VELOCITY_RANGE = 900;
 /**
- * Fraction of a tray slot that counts as "on the piece", for grabbing.
+ * Half-width of the square that counts as "on the piece", for grabbing.
  *
- * The slot is 92pt and the piece drawn inside it fills `TRAY_SLOT_FILL` of that,
- * so the rest of the slot is visibly empty — and treating the *whole* slot as
- * the piece is what left nowhere to scroll from: the strip could only be moved
- * by its slider. Hit-testing the piece instead turns the leftover margin, plus
- * the gap between slots, into a free channel either side of every piece.
+ * Measured from the piece (`TRAY_PIECE`), not the slot. Treating the whole slot as
+ * the piece is what left nowhere to scroll from: the strip could only be moved by
+ * its slider. Hit-testing the piece instead leaves `TRAY_CHANNEL` as a free lane
+ * either side of every piece, which a touch there scrolls from.
  *
- * Slightly larger than `TRAY_SLOT_FILL` on purpose. Matching it exactly makes
- * the edge of a piece the edge of its target, and a finger is not a pixel — a
- * little forgiveness here is the difference between "grabs when I touch it" and
- * "hit or miss", while still leaving roughly 15pt of channel between pieces.
+ * This used to be `TRAY_SLOT * 0.92` — 84.6pt — which was deliberately a little
+ * larger than the piece, because a finger is not a pixel and that forgiveness is the
+ * difference between "grabs when I touch it" and "hit or miss". It cannot stay: the
+ * pitch is now 84.1pt, so an 84.6pt target would overlap its neighbour's and a touch
+ * in the overlap would grab the wrong piece. The channel is the forgiveness budget
+ * now, and at 5pt it is spent, so the target matches the piece exactly.
  */
-const TRAY_GRAB_FILL = 0.92;
+const TRAY_GRAB_HALF = TRAY_PIECE / 2;
 
 interface PuzzleBoardProps {
   generated: GeneratedPuzzle;
@@ -1088,11 +1086,11 @@ export function PuzzleBoard({
     /** Where the tray starts — also the board/tray gesture and clip boundary. */
     const boardZoneH = Math.max(blockTop + fittedH + TRAY_GAP, 1);
 
-    // Slots are a fixed size so exactly `visibleColumns` fit; the piece scales to
-    // the slot rather than the slot growing with the tray height.
+    // The slot sizes the piece; `TRAY_PITCH` spaces them. Keeping the two separate is
+    // what lets the grid tighten without the pieces changing size.
     const slotInner = TRAY_SLOT;
     const thumbScale = trayThumbScale(slotInner, pieceExtent);
-    const slotW = slotInner + SLOT_GAP;
+    const slotW = TRAY_PITCH;
 
     return {
       vw,
@@ -1258,8 +1256,7 @@ export function PuzzleBoard({
     const sliderTop =
       boardZoneH +
       TRAY_PAD +
-      FX.tray.rows * TRAY_SLOT +
-      (FX.tray.rows - 1) * SLOT_GAP +
+      FX.tray.rows * TRAY_PITCH +
       FX.tray.sliderGap -
       // A few points of slop above the pill, so it is comfortable to grab.
       6;
@@ -1405,19 +1402,18 @@ export function PuzzleBoard({
           // Column-major, matching how the pieces are laid out.
           const localX = e.x - trayScroll.value;
           const column = Math.floor((localX - TRAY_PAD) / slotW);
-          const row = Math.floor((e.y - boardZoneH - TRAY_PAD) / (TRAY_SLOT + SLOT_GAP));
+          const row = Math.floor((e.y - boardZoneH - TRAY_PAD) / TRAY_PITCH);
           const slot =
             row >= 0 && row < FX.tray.rows && column >= 0 ? column * FX.tray.rows + row : -1;
 
           // Centre of that slot, and how far from it still counts as the piece.
           const slotCentreX = TRAY_PAD + column * slotW + slotW / 2 + trayScroll.value;
-          const slotCentreY = boardZoneH + TRAY_PAD + row * (TRAY_SLOT + SLOT_GAP) + TRAY_SLOT / 2;
-          const grabHalf = (TRAY_SLOT * TRAY_GRAB_FILL) / 2;
+          const slotCentreY = boardZoneH + TRAY_PAD + row * TRAY_PITCH + TRAY_PITCH / 2;
           const onPiece =
             slot >= 0 &&
             slot < count &&
-            Math.abs(e.x - slotCentreX) <= grabHalf &&
-            Math.abs(e.y - slotCentreY) <= grabHalf;
+            Math.abs(e.x - slotCentreX) <= TRAY_GRAB_HALF &&
+            Math.abs(e.y - slotCentreY) <= TRAY_GRAB_HALF;
 
           if (onPiece) {
             mode.value = 1;
@@ -1526,12 +1522,7 @@ export function PuzzleBoard({
     trayContentW > 0 ? (layout.vw / trayContentW) * trayTrackW : trayTrackW,
   );
   /** Top of the slider band, sitting `sliderGap` below the piece rows. */
-  const sliderY =
-    layout.boardZoneH +
-    TRAY_PAD +
-    FX.tray.rows * TRAY_SLOT +
-    (FX.tray.rows - 1) * SLOT_GAP +
-    FX.tray.sliderGap;
+  const sliderY = layout.boardZoneH + TRAY_PAD + FX.tray.rows * TRAY_PITCH + FX.tray.sliderGap;
   const trayThumbX = useDerivedValue(() => {
     if (trayOverflow <= 0) {
       return TRAY_PAD;
@@ -1810,7 +1801,7 @@ export function PuzzleBoard({
                       image={image}
                       imageScale={imageScale}
                       slotCenterX={TRAY_PAD + column * slotW + slotW / 2}
-                      slotCenterY={TRAY_PAD + row * (TRAY_SLOT + SLOT_GAP) + TRAY_SLOT / 2}
+                      slotCenterY={TRAY_PAD + row * TRAY_PITCH + TRAY_PITCH / 2}
                       scale={thumbScale}
                       highlight={highlightEdges && preparedById[piece.pieceId].isEdge}
                       hidden={piece.pieceId === draggingId}

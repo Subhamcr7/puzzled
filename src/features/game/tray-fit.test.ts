@@ -4,8 +4,14 @@ import {
   BOARD_SHADOW_REACH,
   clampTrayScroll,
   maxPieceExtent,
+  TRAY_CHANNEL,
   TRAY_GAP,
+  TRAY_PAD,
+  TRAY_PIECE,
+  TRAY_PITCH,
   TRAY_SLOT,
+  TRAY_SLOT_FILL,
+  trayHeight,
   trayThumbScale,
 } from './tray-geometry';
 
@@ -74,6 +80,73 @@ describe('board shadow clearance', () => {
     // gets sliced into a hard horizontal edge just above the tray, which reads as
     // the board being cut off rather than as a shadow.
     expect(TRAY_GAP).toBeGreaterThanOrEqual(BOARD_SHADOW_REACH);
+  });
+});
+
+describe('tray pitch', () => {
+  /**
+   * The tray was tightened to fit more pieces on screen, under an explicit
+   * requirement that the pieces themselves not change size. Spacing now comes from
+   * `TRAY_PITCH`; size still comes from `TRAY_SLOT * TRAY_SLOT_FILL`. These pin that
+   * separation, because the obvious way to tighten the grid — shrinking the slot —
+   * would have shrunk the pieces with it.
+   */
+  it('draws pieces at the size they have always been', () => {
+    // 92 * 0.86. If this changes, pieces changed size and the tightening overreached.
+    expect(TRAY_PIECE).toBeCloseTo(79.12, 5);
+    expect(TRAY_PIECE).toBeCloseTo(TRAY_SLOT * TRAY_SLOT_FILL, 5);
+  });
+
+  it('spaces pieces without letting them touch', () => {
+    expect(TRAY_PITCH - TRAY_PIECE).toBeCloseTo(TRAY_CHANNEL, 5);
+    expect(TRAY_CHANNEL).toBeGreaterThanOrEqual(5);
+  });
+
+  it('keeps a grab target inside its own pitch', () => {
+    /**
+     * The hit-test treats a square of `TRAY_PIECE` centred on each slot as the piece.
+     * If that target were wider than the pitch it would overlap its neighbour's and a
+     * touch in the overlap would grab whichever slot the arithmetic reached first —
+     * which is what the old `TRAY_SLOT * 0.92` (84.6pt against an 84.1pt pitch) would
+     * have done.
+     */
+    expect(TRAY_PIECE).toBeLessThanOrEqual(TRAY_PITCH);
+  });
+
+  it('fits the intended four columns in the board shell', () => {
+    // The shelf spans the board shell, not the screen: a 416.8dp-wide phone gives
+    // 384.8 once `content`'s 16pt side padding is removed. At the old 98pt pitch only
+    // 3.68 columns fit, so the fourth piece was always clipped — the very thing the
+    // slot size was documented as fixing.
+    const shellWidth = 384.8;
+    const columns = (shellWidth - TRAY_PAD * 2) / TRAY_PITCH;
+    expect(columns).toBeGreaterThanOrEqual(4);
+  });
+});
+
+describe('tray vertical budget', () => {
+  /**
+   * The board must not shrink to pay for the third tray row.
+   *
+   * `game-screen.tsx` caps the board shell at `shellWidth + BOARD_TRAY_RESERVE`. While
+   * the shell reaches that cap the board's fit is decided by width and the tray cannot
+   * affect it. Once the column runs out of room the shell is shorter than the cap, and
+   * every extra point of tray height comes straight off the board.
+   *
+   * The chrome figure below is an estimate for the 416.8x931.8dp device this was tuned
+   * on (safe areas, header and toolbar), so treat this as the budget being *stated*
+   * rather than measured — the on-device check after the build is what confirms it.
+   * Its value is that a future tray change which busts the budget fails here instead
+   * of silently shrinking the board.
+   */
+  const SHELL_WIDTH = 384.8;
+  const COLUMN_BUDGET = 692;
+
+  it('leaves the board width-constrained rather than height-constrained', () => {
+    const shellHeight = Math.min(SHELL_WIDTH + trayHeight(3, 16, 10) + TRAY_GAP, COLUMN_BUDGET);
+    const availableH = shellHeight - trayHeight(3, 16, 10) - TRAY_GAP;
+    // `puzzle-board.tsx` fits the board to `min(vw * 0.96, availableH)`.
+    expect(availableH).toBeGreaterThanOrEqual(SHELL_WIDTH * 0.96);
   });
 });
 

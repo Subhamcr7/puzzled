@@ -215,23 +215,28 @@ export const FX = {
   /**
    * Tray geometry.
    *
-   * Two rows, four columns visible. One row of larger pieces left a fourth piece
-   * permanently sliced by the screen edge and wasted the space below the strip,
-   * which pushed the toolbar unnaturally high.
+   * Three rows, four columns visible. Two rows of loosely-pitched slots showed only
+   * 3.68 columns in the board shell — the fourth piece was clipped, the very problem
+   * the slot size was meant to solve. Pitching the grid off the piece instead of the
+   * slot (see `TRAY_PITCH`) recovered enough width for the fourth column and enough
+   * height for a third row, roughly doubling the pieces on screen at the same piece
+   * size.
    *
    * Columns fill top-to-bottom then rightward, so scrolling right reveals whole
    * new columns rather than shuffling the existing ones.
    */
   tray: {
-    rows: 2,
+    rows: 3,
     /** Columns fully visible at once — the piece size follows from this. */
     visibleColumns: 4,
     /**
      * Gap between the piece grid and the scroll slider, so they never touch.
      * Widened from 12 — at that distance the slider read as part of the bottom row
-     * of pieces rather than as its own control.
+     * of pieces rather than as its own control. Trimmed from 22 to fund the third
+     * row; 16 still clears that failure, and the row pitch is tighter than the gap
+     * so the slider stays visibly separate from the grid.
      */
-    sliderGap: 22,
+    sliderGap: 16,
     /** Height of the slider's track and pill. */
     sliderHeight: 10,
   },
