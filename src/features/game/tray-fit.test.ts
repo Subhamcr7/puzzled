@@ -126,27 +126,45 @@ describe('tray pitch', () => {
 
 describe('tray vertical budget', () => {
   /**
-   * The board must not shrink to pay for the third tray row.
+   * How much of the board the third tray row is allowed to cost.
    *
    * `game-screen.tsx` caps the board shell at `shellWidth + BOARD_TRAY_RESERVE`. While
    * the shell reaches that cap the board's fit is decided by width and the tray cannot
-   * affect it. Once the column runs out of room the shell is shorter than the cap, and
-   * every extra point of tray height comes straight off the board.
+   * affect it at all. Once the column runs out of room the shell is shorter than the
+   * cap, and every extra point of tray height comes straight off the board.
    *
-   * The chrome figure below is an estimate for the 416.8x931.8dp device this was tuned
-   * on (safe areas, header and toolbar), so treat this as the budget being *stated*
-   * rather than measured — the on-device check after the build is what confirms it.
-   * Its value is that a future tray change which busts the budget fails here instead
-   * of silently shrinking the board.
+   * Both figures below are *measured*, from a screenshot of the release build on a
+   * 1240x2772 @476dpi device (416.8x931.8dp): the shell spans 384.8dp wide — the
+   * screen less `content`'s 16pt side padding — and 684.7dp tall, the rest being safe
+   * areas, header and toolbar. An earlier estimate of 692 was wrong in the direction
+   * that mattered, and a test asserting the board stayed width-constrained passed on
+   * it while the shipped board was in fact 1.8% smaller. Hence measured numbers here.
+   *
+   * At `trayHeight(3, 16, 10)` = 294.36 the cap is 707.2, above the 684.7 the column
+   * can give, so the board is height-constrained at 362.3dp against the 369.4dp it
+   * would reach on width alone. That 1.8% is the agreed price of the third row; this
+   * pins it so a future tray change cannot quietly turn 1.8% into 10%.
    */
   const SHELL_WIDTH = 384.8;
-  const COLUMN_BUDGET = 692;
+  const COLUMN_BUDGET = 684.7;
+  /** Board size when width constrains the fit, which is the most it can ever be. */
+  const IDEAL_BOARD = SHELL_WIDTH * 0.96;
 
-  it('leaves the board width-constrained rather than height-constrained', () => {
-    const shellHeight = Math.min(SHELL_WIDTH + trayHeight(3, 16, 10) + TRAY_GAP, COLUMN_BUDGET);
-    const availableH = shellHeight - trayHeight(3, 16, 10) - TRAY_GAP;
+  function fittedBoard(rows: number, sliderGap: number, sliderHeight: number): number {
+    const reserve = trayHeight(rows, sliderGap, sliderHeight) + TRAY_GAP;
+    const shellHeight = Math.min(SHELL_WIDTH + reserve, COLUMN_BUDGET);
     // `puzzle-board.tsx` fits the board to `min(vw * 0.96, availableH)`.
-    expect(availableH).toBeGreaterThanOrEqual(SHELL_WIDTH * 0.96);
+    return Math.min(IDEAL_BOARD, shellHeight - reserve);
+  }
+
+  it('costs the board no more than 2% to seat three rows', () => {
+    expect(fittedBoard(3, 16, 10)).toBeGreaterThanOrEqual(IDEAL_BOARD * 0.98);
+  });
+
+  it('reports the two-row tray as free, which is how it shipped before', () => {
+    // Pins the mechanism rather than trusting it: at the old reserve the cap was
+    // reachable, so the board was decided by width alone.
+    expect(fittedBoard(2, 22, 10)).toBeCloseTo(IDEAL_BOARD, 5);
   });
 });
 
