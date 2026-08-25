@@ -39,10 +39,12 @@ import {
   isWithinSnapDistance,
   raisePiece,
   snapThresholdForCellSize,
+  trayOrder,
   DEFAULT_SNAP_THRESHOLD_RATIO,
   STRICT_SNAP_THRESHOLD_RATIO,
   type GameSession,
   type GeneratedPuzzle,
+  type GridSize,
   type PieceEdges,
   type PieceGeometry,
   type PieceLocalPath,
@@ -60,6 +62,7 @@ import { clusterCacheKey, clusterLockedPieces } from './cluster-geometry';
 import { bakeOverlay, overlayCacheKey, type BakedOverlay } from './piece-overlay';
 import {
   BOARD_SHADOW,
+  boardPadding,
   clampTrayScroll,
   maxPieceExtent,
   TRAY_GAP,
@@ -68,11 +71,10 @@ import {
   TRAY_PITCH,
   TRAY_SLOT,
   trayHeight,
+  trayRows,
   trayThumbScale,
 } from './tray-geometry';
 import { useBoardCamera } from './use-board-camera';
-
-const BOARD_PADDING = 12;
 
 /**
  * The one corner radius on the board, in board units: used for the play area's
@@ -96,15 +98,21 @@ function boardCornerRadius(cellSize: number): number {
  * despite both having read 20.
  */
 const TRAY_RADIUS = 20;
-/** Tray strip height: the piece rows, then a gap, then the slider. */
-const TRAY_HEIGHT = trayHeight(FX.tray.rows, FX.tray.sliderGap, FX.tray.sliderHeight);
 /**
- * Vertical space the tray needs below the board.
+ * Vertical space the tray needs below the board, for a grid.
  *
  * Exported so the game screen can cap the board shell's height: the board is
  * square, so a shell taller than `width + this` can only add dead margin.
+ *
+ * A function rather than the constant it used to be, because the row count is now
+ * per-grid (`trayRows`) and so therefore is the tray's height. The cap and the
+ * board's own fit must be computed from the same row count or the shell reserves
+ * space for a tray of a different size than the one drawn.
  */
-export const BOARD_TRAY_RESERVE = TRAY_HEIGHT + TRAY_GAP;
+export function boardTrayReserve(gridSize: GridSize): number {
+  const rows = trayRows(gridSize, FX.tray.rows);
+  return trayHeight(rows, FX.tray.sliderGap, FX.tray.sliderHeight) + TRAY_GAP;
+}
 /**
  * Confetti brights, as a function of the theme.
  *
@@ -1025,9 +1033,31 @@ export function PuzzleBoard({
     [session.pieces, isOnBoard],
   );
 
+  /**
+   * Rank of every piece in the tray's presentation order.
+   *
+   * Built once per puzzle, from the generated piece list rather than from whatever
+   * is currently unplaced, because a rank recomputed against the shrinking tray
+   * would reorder the survivors on every placement.
+   *
+   * Without this the strip drew pieces in `session.pieces` order, which is
+   * `generatePuzzlePieces`' row-major emission order, so tray column 0 held image
+   * row 0 and the shelf showed the solved picture transposed — see `trayOrder`.
+   */
+  const trayRank = useMemo(() => {
+    const order = trayOrder(
+      generated.pieces.map((piece) => piece.id),
+      `${generated.puzzle.id}:${generated.puzzle.revision}`,
+    );
+    return new Map(order.map((id, index) => [id, index]));
+  }, [generated.pieces, generated.puzzle.id, generated.puzzle.revision]);
+
   const trayPieces = useMemo(
-    () => session.pieces.filter((p) => !p.isLocked && !isOnBoard(p)),
-    [session.pieces, isOnBoard],
+    () =>
+      session.pieces
+        .filter((p) => !p.isLocked && !isOnBoard(p))
+        .sort((a, b) => (trayRank.get(a.pieceId) ?? 0) - (trayRank.get(b.pieceId) ?? 0)),
+    [session.pieces, isOnBoard, trayRank],
   );
 
   const looseIds = useMemo(() => loosePieces.map((p) => p.pieceId), [loosePieces]);
@@ -1040,7 +1070,7 @@ export function PuzzleBoard({
   }, [trayIds]);
 
   // Hit-test boxes for loose board pieces, in the same board-local space as
-  // `releasePiece`'s coordinate conversion (post BOARD_PADDING removal). Kept as
+  // `releasePiece`'s coordinate conversion (post `boardPad` removal). Kept as
   // plain numbers/strings only — no SkPath/Skia objects — so the gesture worklet
   // can safely close over this array.
   const looseHitTestData = useMemo(
@@ -1062,23 +1092,35 @@ export function PuzzleBoard({
   const layout = useMemo(() => {
     const vw = viewport.width;
     const vh = viewport.height;
-    const outerW = boardSize.width + BOARD_PADDING * 2;
-    const outerH = boardSize.height + BOARD_PADDING * 2;
+    /**
+     * The three per-grid numbers, resolved here and returned below.
+     *
+     * They are derived in this memo rather than beside the component's other
+     * constants so that every consumer reaches them through `layout`, which the
+     * gesture memo already depends on. Both gesture worklets read them, and they
+     * are plain numbers, which is what keeps that safe — see
+     * `worklet-closures.test.ts`.
+     */
+    const trayRowCount = trayRows(gridSize, FX.tray.rows);
+    const trayH = trayHeight(trayRowCount, FX.tray.sliderGap, FX.tray.sliderHeight);
+    const boardPad = boardPadding(gridSize);
+    const outerW = boardSize.width + boardPad * 2;
+    const outerH = boardSize.height + boardPad * 2;
 
     // Fit against the space left once the tray is accounted for, so every board
     // edge stays on screen.
-    const availableH = Math.max(vh - TRAY_HEIGHT - TRAY_GAP, 1);
+    const availableH = Math.max(vh - trayH - TRAY_GAP, 1);
     const boardScale = Math.min((vw * 0.96) / outerW, availableH / outerH);
     const fittedH = outerH * boardScale;
 
     /**
      * The board is square while the zone is tall, so width almost always
      * constrains the fit and vertical slack is unavoidable. Previously the board
-     * was centred in `vh - TRAY_HEIGHT` and the tray pinned to the very bottom,
+     * was centred in `vh - trayH` and the tray pinned to the very bottom,
      * which put all that slack in one visible gap between the two. Treating
      * board + tray as one centred block distributes it as an even mat instead.
      */
-    const blockH = fittedH + TRAY_GAP + TRAY_HEIGHT;
+    const blockH = fittedH + TRAY_GAP + trayH;
     const blockTop = Math.max(0, (vh - blockH) / 2);
 
     const boardOffsetX = (vw - outerW * boardScale) / 2;
@@ -1102,8 +1144,11 @@ export function PuzzleBoard({
       slotW,
       thumbScale,
       slotInner,
+      trayRowCount,
+      trayH,
+      boardPad,
     };
-  }, [viewport.width, viewport.height, boardSize.width, boardSize.height, pieceExtent]);
+  }, [viewport.width, viewport.height, boardSize.width, boardSize.height, pieceExtent, gridSize]);
 
   // Camera pans/zooms the board zone only (1x-3x); the tray strip is pinned
   // and unscaled. At rest (scale 1, translate 0) it is the identity, so it
@@ -1242,10 +1287,20 @@ export function PuzzleBoard({
   );
 
   const gesture = useMemo(() => {
-    const { boardZoneH, boardScale, boardOffsetX, boardOffsetY, slotW, vw } = layout;
+    const {
+      boardZoneH,
+      boardScale,
+      boardOffsetX,
+      boardOffsetY,
+      slotW,
+      vw,
+      trayRowCount,
+      trayH,
+      boardPad,
+    } = layout;
     const count = trayIds.length;
     // Column-major over `rows`, matching how the tray renders.
-    const columns = Math.ceil(count / FX.tray.rows);
+    const columns = Math.ceil(count / trayRowCount);
     const contentW = columns * slotW + TRAY_PAD * 2;
     const minScroll = Math.min(0, vw - contentW);
     /** Distance the slider pill can travel, used to scale slider drags. */
@@ -1256,7 +1311,7 @@ export function PuzzleBoard({
     const sliderTop =
       boardZoneH +
       TRAY_PAD +
-      FX.tray.rows * TRAY_PITCH +
+      trayRowCount * TRAY_PITCH +
       FX.tray.sliderGap -
       // A few points of slop above the pill, so it is comfortable to grab.
       6;
@@ -1282,8 +1337,8 @@ export function PuzzleBoard({
       // math from Task 11, which is otherwise unchanged.
       const preCamX = (canvasX - camTx.value) / camScale.value;
       const preCamY = (canvasY - camTy.value) / camScale.value;
-      const boardX = (preCamX - boardOffsetX) / boardScale - BOARD_PADDING;
-      const boardY = (preCamY - boardOffsetY) / boardScale - BOARD_PADDING;
+      const boardX = (preCamX - boardOffsetX) / boardScale - boardPad;
+      const boardY = (preCamY - boardOffsetY) / boardScale - boardPad;
       const position = { x: boardX - prepared.cx, y: boardY - prepared.cy };
       const solved = { x: prepared.solvedX, y: prepared.solvedY };
 
@@ -1336,8 +1391,8 @@ export function PuzzleBoard({
       // The glow ring is drawn at the Canvas root (outside the camera group,
       // so it stays on top of the tray/floating piece), so its position must
       // be pushed through the same live camera transform used above.
-      const staticCx = boardOffsetX + (BOARD_PADDING + solved.x + prepared.cx) * boardScale;
-      const staticCy = boardOffsetY + (BOARD_PADDING + solved.y + prepared.cy) * boardScale;
+      const staticCx = boardOffsetX + (boardPad + solved.x + prepared.cx) * boardScale;
+      const staticCy = boardOffsetY + (boardPad + solved.y + prepared.cy) * boardScale;
       const settledCx = camTx.value + camScale.value * staticCx;
       const settledCy = camTy.value + camScale.value * staticCy;
       setSnapFlash({
@@ -1362,7 +1417,7 @@ export function PuzzleBoard({
         // Anything outside the drawn tray strip is board, including the margin
         // below it — that margin previously counted as tray, so a drag there could
         // grab a slot with no piece visible under the finger.
-        if (e.y < boardZoneH || e.y > boardZoneH + TRAY_HEIGHT) {
+        if (e.y < boardZoneH || e.y > boardZoneH + trayH) {
           // Board zone: hit-test loose pieces, topmost (highest z-index) first.
           // The board now renders behind the camera transform (Group
           // transform={cameraTransform} wrapping the static board Group), so
@@ -1370,8 +1425,8 @@ export function PuzzleBoard({
           // board-space math — otherwise grabs drift whenever zoomed/panned.
           const preCamX = (e.x - camTx.value) / camScale.value;
           const preCamY = (e.y - camTy.value) / camScale.value;
-          const boardX = (preCamX - boardOffsetX) / boardScale - BOARD_PADDING;
-          const boardY = (preCamY - boardOffsetY) / boardScale - BOARD_PADDING;
+          const boardX = (preCamX - boardOffsetX) / boardScale - boardPad;
+          const boardY = (preCamY - boardOffsetY) / boardScale - boardPad;
           for (let i = looseBoxes.length - 1; i >= 0; i -= 1) {
             const box = looseBoxes[i];
             if (Math.abs(boardX - box.cx) <= box.halfW && Math.abs(boardY - box.cy) <= box.halfH) {
@@ -1404,7 +1459,7 @@ export function PuzzleBoard({
           const column = Math.floor((localX - TRAY_PAD) / slotW);
           const row = Math.floor((e.y - boardZoneH - TRAY_PAD) / TRAY_PITCH);
           const slot =
-            row >= 0 && row < FX.tray.rows && column >= 0 ? column * FX.tray.rows + row : -1;
+            row >= 0 && row < trayRowCount && column >= 0 ? column * trayRowCount + row : -1;
 
           // Centre of that slot, and how far from it still counts as the piece.
           const slotCentreX = TRAY_PAD + column * slotW + slotW / 2 + trayScroll.value;
@@ -1511,7 +1566,7 @@ export function PuzzleBoard({
 
   // ---- Tray slider geometry ----
   /** Columns needed for every tray piece, filling top-to-bottom then rightward. */
-  const trayColumns = Math.ceil(trayIds.length / FX.tray.rows);
+  const trayColumns = Math.ceil(trayIds.length / layout.trayRowCount);
   const trayContentW = trayColumns * layout.slotW + TRAY_PAD * 2;
   const trayTrackW = Math.max(layout.vw - TRAY_PAD * 2, 1);
   /** How far the strip can scroll; 0 when everything already fits. */
@@ -1522,7 +1577,8 @@ export function PuzzleBoard({
     trayContentW > 0 ? (layout.vw / trayContentW) * trayTrackW : trayTrackW,
   );
   /** Top of the slider band, sitting `sliderGap` below the piece rows. */
-  const sliderY = layout.boardZoneH + TRAY_PAD + FX.tray.rows * TRAY_PITCH + FX.tray.sliderGap;
+  const sliderY =
+    layout.boardZoneH + TRAY_PAD + layout.trayRowCount * TRAY_PITCH + FX.tray.sliderGap;
   const trayThumbX = useDerivedValue(() => {
     if (trayOverflow <= 0) {
       return TRAY_PAD;
@@ -1563,7 +1619,18 @@ export function PuzzleBoard({
     return <View style={styles.measure} onLayout={onLayout} />;
   }
 
-  const { boardScale, boardOffsetX, boardOffsetY, boardZoneH, slotW, thumbScale, vw } = layout;
+  const {
+    boardScale,
+    boardOffsetX,
+    boardOffsetY,
+    boardZoneH,
+    slotW,
+    thumbScale,
+    vw,
+    trayRowCount,
+    trayH,
+    boardPad,
+  } = layout;
   const gridLines = Array.from({ length: gridSize - 1 }, (_, i) => cellSize * (i + 1));
 
   return (
@@ -1586,7 +1653,7 @@ export function PuzzleBoard({
               x={TRAY_PAD / 2}
               y={boardZoneH}
               width={Math.max(vw - TRAY_PAD, 1)}
-              height={TRAY_HEIGHT}
+              height={trayH}
               r={TRAY_RADIUS}
               color={theme.colors.paper}
               opacity={0.95}
@@ -1623,9 +1690,9 @@ export function PuzzleBoard({
                   <RoundedRect
                     x={0}
                     y={0}
-                    width={boardSize.width + BOARD_PADDING * 2}
-                    height={boardSize.height + BOARD_PADDING * 2}
-                    r={cornerRadius + BOARD_PADDING * 0.6}
+                    width={boardSize.width + boardPad * 2}
+                    height={boardSize.height + boardPad * 2}
+                    r={cornerRadius + boardPad * 0.6}
                     color={theme.colors.surface}
                   >
                     <Shadow
@@ -1641,8 +1708,8 @@ export function PuzzleBoard({
                       turned oak and the one surface the player stares at stayed
                       sage. */}
                   <RoundedRect
-                    x={BOARD_PADDING}
-                    y={BOARD_PADDING}
+                    x={boardPad}
+                    y={boardPad}
                     width={boardSize.width}
                     height={boardSize.height}
                     r={cornerRadius}
@@ -1651,14 +1718,12 @@ export function PuzzleBoard({
 
                   <Group
                     clip={rrect(
-                      rect(BOARD_PADDING, BOARD_PADDING, boardSize.width, boardSize.height),
+                      rect(boardPad, boardPad, boardSize.width, boardSize.height),
                       cornerRadius,
                       cornerRadius,
                     )}
                   >
-                    <Group
-                      transform={[{ translateX: BOARD_PADDING }, { translateY: BOARD_PADDING }]}
-                    >
+                    <Group transform={[{ translateX: boardPad }, { translateY: boardPad }]}>
                       {/* Faint cell grid to guide placement. Optional: some players
                           want the bare picture, and the grid is the one thing on
                           the board that is scaffolding rather than the puzzle. */}
@@ -1785,15 +1850,15 @@ export function PuzzleBoard({
                 disappear exactly at its edge, including into the rounded corners. */}
             <Group
               clip={rrect(
-                rect(TRAY_PAD / 2, boardZoneH, Math.max(vw - TRAY_PAD, 1), TRAY_HEIGHT),
+                rect(TRAY_PAD / 2, boardZoneH, Math.max(vw - TRAY_PAD, 1), trayH),
                 TRAY_RADIUS,
                 TRAY_RADIUS,
               )}
             >
               <Group transform={trayTransform}>
                 {trayPieces.map((piece, index) => {
-                  const column = Math.floor(index / FX.tray.rows);
-                  const row = index % FX.tray.rows;
+                  const column = Math.floor(index / trayRowCount);
+                  const row = index % trayRowCount;
                   return (
                     <TrayPiece
                       key={piece.pieceId}

@@ -1,4 +1,4 @@
-import { type PieceLocalPath } from '@/game-engine';
+import { type GridSize, type PieceLocalPath } from '@/game-engine';
 
 /**
  * Tray slot sizing, kept free of Skia so it can be tested directly.
@@ -91,12 +91,57 @@ export const TRAY_GAP = 28;
  * slot padded the strip by the slot's unused margin twice over — once above the top
  * row and once below the bottom — which is height the board could have had.
  *
- * Takes the slider's dimensions as arguments rather than importing `FX`: `board-fx.ts`
- * is a Skia-adjacent module, and keeping this file free of that import is what lets
- * `tray-fit.test.ts` exercise this arithmetic at all.
+ * Takes the slider's dimensions as arguments rather than importing `FX`, so the
+ * geometry stays independent of the effects config: `board-fx.ts` owns tuning the
+ * player can feel, this file owns arithmetic, and the dependency runs one way only.
+ * The caller in `puzzle-board.tsx` binds the two together.
  */
 export function trayHeight(rows: number, sliderGap: number, sliderHeight: number): number {
   return TRAY_PAD * 2 + rows * TRAY_PITCH + sliderGap + sliderHeight;
+}
+
+/**
+ * How many rows the tray lays its pieces out in.
+ *
+ * `maxRows` for every grid except 3x3, which uses two. Rows are the tray's cost to
+ * the board — each one is `TRAY_PITCH` of height the board cannot have — and a 3x3
+ * has only nine pieces, so a third row buys a third column instead of a wider strip:
+ * a tall tray holding a narrow block, with empty shelf to its right. Two rows spend
+ * that height on the board and the pieces across the width already there.
+ *
+ * Keyed on the grid, deliberately, and not on how many pieces are still unplaced.
+ * Deriving it from the remaining count would restyle the tray mid-game, and since
+ * the board is fitted against the tray's height the board would jump on whichever
+ * placement crossed the boundary.
+ *
+ * Takes `maxRows` rather than reading `FX.tray.rows` for the same reason
+ * `trayHeight` takes the slider's dimensions — see that function.
+ */
+export function trayRows(gridSize: GridSize, maxRows: number): number {
+  return gridSize === 3 ? 2 : maxRows;
+}
+
+/**
+ * The cream frame between the mat's edge and the play area, in board units.
+ *
+ * Thinner on the densest grids. The board is fit to the shell's width, so the mat's
+ * on-screen size is effectively fixed and the frame and the play area compete for
+ * it: `cellSizeForGrid` anchors every board at ~288 units wide whatever the grid,
+ * which leaves a 10x10's cells at 29 units against a 4x4's 72. Trimming the frame on
+ * those grids hands the difference to the pieces without moving the mat's footprint
+ * by a single point, so nothing can collide with the tray.
+ *
+ * Board units, so `cellSize` and the snap radius are untouched — this changes what
+ * the player sees, not what the puzzle computes.
+ */
+export const BOARD_PADDING = 12;
+
+/** `BOARD_PADDING` for 9x9 and 10x10 — see `boardPadding`. */
+export const BOARD_PADDING_DENSE = 6;
+
+/** The frame width for a grid, in board units. */
+export function boardPadding(gridSize: GridSize): number {
+  return gridSize >= 9 ? BOARD_PADDING_DENSE : BOARD_PADDING;
 }
 
 /**

@@ -38,7 +38,7 @@ import { Art, PopButton, PopSheet, PopSurface, PopToggle, Text, ThemeGround } fr
 import { setMusicEnabled, setSfxEnabled } from './board-audio';
 import { FX, setHapticsEnabled } from './board-fx';
 import { formatClock } from './play-clock';
-import { BOARD_TRAY_RESERVE, PuzzleBoard } from './puzzle-board';
+import { boardTrayReserve, PuzzleBoard } from './puzzle-board';
 import { usePlayClock } from './use-play-clock';
 
 type OverlayKind = 'none' | 'pause' | 'hint' | 'preview';
@@ -651,7 +651,7 @@ export function GameScreen({ puzzleId, initialGridSize }: GameScreenProps) {
           <View
             style={[
               styles.boardShell,
-              shellWidth > 0 && { maxHeight: shellWidth + BOARD_TRAY_RESERVE },
+              shellWidth > 0 && { maxHeight: shellWidth + boardTrayReserve(gridSize) },
             ]}
             onLayout={(event) => {
               const { width } = event.nativeEvent.layout;

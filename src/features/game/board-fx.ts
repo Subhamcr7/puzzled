@@ -215,19 +215,30 @@ export const FX = {
   /**
    * Tray geometry.
    *
-   * Three rows, four columns visible. Two rows of loosely-pitched slots showed only
-   * 3.68 columns in the board shell — the fourth piece was clipped, the very problem
-   * the slot size was meant to solve. Pitching the grid off the piece instead of the
-   * slot (see `TRAY_PITCH`) recovered enough width for the fourth column and enough
-   * height for a third row, roughly doubling the pieces on screen at the same piece
-   * size.
+   * Up to three rows, four columns visible. Two rows of loosely-pitched slots showed
+   * only 3.68 columns in the board shell — the fourth piece was clipped, the very
+   * problem the slot size was meant to solve. Pitching the grid off the piece instead
+   * of the slot (see `TRAY_PITCH`) recovered enough width for the fourth column and
+   * enough height for a third row, roughly doubling the pieces on screen at the same
+   * piece size.
    *
    * Columns fill top-to-bottom then rightward, so scrolling right reveals whole
    * new columns rather than shuffling the existing ones.
    */
   tray: {
+    /**
+     * The row *ceiling*, not the row count. `trayRows` spends fewer on grids with too
+     * few pieces to fill them — read it through that function, never directly.
+     */
     rows: 3,
-    /** Columns fully visible at once — the piece size follows from this. */
+    /**
+     * Columns fully visible at once, as a statement of intent.
+     *
+     * Nothing reads this: the piece size is `TRAY_SLOT * TRAY_SLOT_FILL` and the
+     * pitch is `TRAY_PITCH`, both independent of it. `tray-fit.test.ts` checks the
+     * geometry those produce does deliver this many columns, which is the only sense
+     * in which the value is load-bearing.
+     */
     visibleColumns: 4,
     /**
      * Gap between the piece grid and the scroll slider, so they never touch.

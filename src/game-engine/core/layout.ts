@@ -29,6 +29,25 @@ function shuffled<T>(items: readonly T[], random: () => number): T[] {
 
 export type LayoutMode = 'tray' | 'scatter';
 
+/**
+ * The order unplaced pieces are presented in, shuffled deterministically.
+ *
+ * Separate from `trayPositions` because the two are consumed by different things.
+ * A position only says "not on the board" to the renderer — the tray strip lays its
+ * pieces out on its own grid, by their index in this order, and discards the x/y
+ * here entirely. So shuffling slot assignment below does nothing for what the player
+ * sees: the strip was drawing pieces in `generatePuzzlePieces`' row-major emission
+ * order, which stacks image row 0 into tray column 0 and shows the solved picture
+ * transposed. The puzzle gave itself away in its own tray.
+ *
+ * Returned as a fixed order for the whole puzzle, not recomputed against whatever is
+ * left unplaced. Re-shuffling the survivors on each placement would relocate every
+ * remaining piece the moment one was placed.
+ */
+export function trayOrder(pieceIds: readonly string[], seed: string): string[] {
+  return shuffled(pieceIds, createSeededRng(`${seed}:tray-order`));
+}
+
 export interface LayoutOptions {
   pieces: readonly PieceGeometry[];
   boardSize: Size;
