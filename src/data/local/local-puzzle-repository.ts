@@ -15,6 +15,50 @@ const bundledPuzzles: PuzzleDefinition[] = [
     seed: 'first-light-v1',
     revision: 1,
   },
+  {
+    id: 'playful-monkey',
+    title: 'Playful Monkey',
+    image: {
+      uri: 'asset://puzzles/playful-monkey',
+      pixelSize: { width: 736, height: 760 },
+    },
+    gridSize: 4,
+    seed: 'playful-monkey-v1',
+    revision: 1,
+  },
+  {
+    id: 'pond-friends',
+    title: 'Pond Friends',
+    image: {
+      uri: 'asset://puzzles/pond-friends',
+      pixelSize: { width: 736, height: 736 },
+    },
+    gridSize: 4,
+    seed: 'pond-friends-v1',
+    revision: 1,
+  },
+  {
+    id: 'frog-mugshot',
+    title: 'Frog Mugshot',
+    image: {
+      uri: 'asset://puzzles/frog-mugshot',
+      pixelSize: { width: 736, height: 736 },
+    },
+    gridSize: 4,
+    seed: 'frog-mugshot-v1',
+    revision: 1,
+  },
+  {
+    id: 'lazy-afternoon',
+    title: 'Lazy Afternoon',
+    image: {
+      uri: 'asset://puzzles/lazy-afternoon',
+      pixelSize: { width: 736, height: 736 },
+    },
+    gridSize: 4,
+    seed: 'lazy-afternoon-v1',
+    revision: 1,
+  },
 ];
 
 function clonePuzzle(puzzle: PuzzleDefinition): PuzzleDefinition {

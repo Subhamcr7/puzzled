@@ -379,10 +379,11 @@ export function HomeScreen() {
                       return;
                     }
                     if (data.firstPlayable) {
-                      router.push({
-                        pathname: '/difficulty/[puzzleId]',
-                        params: { puzzleId: data.firstPlayable.id },
-                      });
+                      // The browse-then-build flow: Play drops the player into the
+                      // Puzzles tab (Discover) to choose which image to solve,
+                      // which then routes into the piece-count picker. `navigate`,
+                      // not `push` — see the quick links below.
+                      router.navigate('/puzzles');
                     }
                   }}
                 />

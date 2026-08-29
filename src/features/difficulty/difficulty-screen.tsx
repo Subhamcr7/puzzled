@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -9,35 +9,13 @@ import {
   resolvePuzzleImageSource,
   type PuzzleProgressSummary,
 } from '@/data';
-import {
-  expectedPieceCount,
-  SUPPORTED_GRID_SIZES,
-  type GridSize,
-  type PuzzleDefinition,
-} from '@/game-engine';
-import { type ArtName } from '@/shared/art';
+import { SUPPORTED_GRID_SIZES, type GridSize, type PuzzleDefinition } from '@/game-engine';
 import { useTheme } from '@/shared/theme-context';
 import { createThemedStyles } from '@/shared/themed-styles';
 import { radii, spacing, typography } from '@/shared/theme';
 import { Art, PopButton, PopHeader, PopSurface, Text, ThemeGround } from '@/shared/ui';
 
-/** Difficulty word for a grid size, mirroring the tiers in the mockup. */
-function tierFor(size: GridSize): string {
-  if (size <= 4) return 'Easy';
-  if (size <= 7) return 'Medium';
-  return 'Hard';
-}
-
-/**
- * Piece art per tier. The mockup labels its three piece counts with a coloured
- * jigsaw piece each; the asset set ships green, yellow and brown pieces, so the
- * tiers map onto them in ascending difficulty.
- */
-function pieceArtFor(size: GridSize): ArtName {
-  if (size <= 4) return 'puzzle-green';
-  if (size <= 7) return 'puzzle-yellow';
-  return 'puzzle-brown';
-}
+import { PiecePicker } from './piece-picker';
 
 /** The board the player touched last, so the picker can open on it. */
 function mostRecent(rows: PuzzleProgressSummary[]): PuzzleProgressSummary | null {
@@ -122,59 +100,12 @@ export function DifficultyScreen({ puzzleId }: { puzzleId: string }) {
 
           <Text style={styles.puzzleTitle}>{puzzle?.title ?? 'Puzzle'}</Text>
 
-          <View style={styles.grid}>
-            {SUPPORTED_GRID_SIZES.map((size) => {
-              const active = size === selected;
-              const board = saved.get(size);
-              return (
-                <Pressable
-                  key={size}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  accessibilityLabel={
-                    board
-                      ? `${expectedPieceCount(size)} pieces, ${tierFor(size)}, ` +
-                        `${board.lockedPieces} of ${board.totalPieces} already placed`
-                      : `${expectedPieceCount(size)} pieces, ${tierFor(size)}`
-                  }
-                  onPress={() => setSelected(size)}
-                  style={styles.tile}
-                >
-                  {/* Selected tiles fill grass with white numerals; unselected
-                      stay cream with ink. The mockup distinguishes the two by
-                      fill, not by a ring. */}
-                  <PopSurface
-                    fill={active ? theme.colors.grassDeep : theme.colors.surface}
-                    radius={radii.md}
-                    elevation={active ? 'raised' : 'card'}
-                    contentStyle={styles.tileBody}
-                  >
-                    <Art name={pieceArtFor(size)} size={38} />
-                    <Text style={[styles.tileCount, active && styles.tileCountActive]}>
-                      {expectedPieceCount(size)}
-                    </Text>
-                    <Text
-                      numberOfLines={1}
-                      style={[styles.tileTier, active && styles.tileTierActive]}
-                    >
-                      {tierFor(size)} · {size}×{size}
-                    </Text>
-                    {/* Absolutely positioned so a tile with a board saved is
-                        exactly as tall as one without — a third line here would
-                        leave the wrapped rows ragged, and worse at large font
-                        scales. */}
-                    {board ? (
-                      <View style={styles.tileSaved}>
-                        <Text style={styles.tileSavedText}>
-                          {board.lockedPieces}/{board.totalPieces}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </PopSurface>
-                </Pressable>
-              );
-            })}
-          </View>
+          <PiecePicker
+            sizes={SUPPORTED_GRID_SIZES}
+            selected={selected}
+            saved={saved}
+            onSelect={setSelected}
+          />
         </ScrollView>
 
         <View style={styles.footer}>
@@ -214,35 +145,6 @@ const useStyles = createThemedStyles((theme) =>
     previewImage: { width: '100%', height: '100%' },
     previewFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     puzzleTitle: { ...typography.title, color: theme.colors.headingGreen, textAlign: 'center' },
-    grid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: spacing.md,
-      justifyContent: 'space-between',
-    },
-    tile: { width: '47%' },
-    tileBody: {
-      alignItems: 'center',
-      paddingVertical: spacing.md,
-      gap: 2,
-    },
-    tileCount: { ...typography.title, fontSize: 30, color: theme.colors.ink },
-    tileCountActive: { color: theme.colors.onFill },
-    tileTier: { ...typography.label, color: theme.colors.inkMuted },
-    // The "you have a board here" pill. Out of flow (see the render) so it
-    // cannot change a tile's height.
-    tileSaved: {
-      position: 'absolute',
-      top: spacing.xs,
-      right: spacing.xs,
-      paddingHorizontal: spacing.xs,
-      paddingVertical: 1,
-      borderRadius: radii.sm,
-      backgroundColor: theme.colors.honey,
-    },
-    tileSavedText: { ...typography.label, fontSize: 11, color: theme.colors.ink },
-    // 3.25:1 on grassDeep — the same pairing PopButton uses for its grass tone.
-    tileTierActive: { color: theme.colors.onFill },
     // Bottom padding as well as top: without it the button sat flush against the
     // gesture bar.
     footer: {

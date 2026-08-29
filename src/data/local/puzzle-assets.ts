@@ -9,6 +9,10 @@ import type { PuzzleDefinition } from '@/game-engine';
  */
 const PUZZLE_IMAGE_MODULES: Record<string, number> = {
   'first-light': require('../../../assets/puzzles/first-light.png'),
+  'playful-monkey': require('../../../assets/puzzles/playful-monkey.jpg'),
+  'pond-friends': require('../../../assets/puzzles/pond-friends.jpg'),
+  'frog-mugshot': require('../../../assets/puzzles/frog-mugshot.jpg'),
+  'lazy-afternoon': require('../../../assets/puzzles/lazy-afternoon.jpg'),
 };
 
 export function getPuzzleImageModule(puzzleId: string): number | null {

@@ -1,5 +1,6 @@
 import type { PuzzleDefinition } from '@/game-engine';
 
+import { LocalPuzzleRepository } from './local-puzzle-repository';
 import { getPuzzleImageModule, isUserPuzzle, resolvePuzzleImageSource } from './puzzle-assets';
 
 function makePuzzle(overrides: Partial<PuzzleDefinition> = {}): PuzzleDefinition {
@@ -40,5 +41,17 @@ describe('image source resolution', () => {
 
   it('treats bundled puzzles as not user-deletable', () => {
     expect(isUserPuzzle(makePuzzle({ id: 'first-light' }))).toBe(false);
+  });
+
+  it('ships an image module for every bundled catalog entry', async () => {
+    // `puzzle-assets.ts` documents the contract: adding a puzzle means one require
+    // here plus its catalog entry in `local-puzzle-repository`. This pins the two
+    // halves together, so a catalog entry with no art surfaces as a broken puzzle
+    // on the board instead of a silent blank.
+    const puzzles = await new LocalPuzzleRepository().list();
+    expect(puzzles.length).toBeGreaterThan(0);
+    for (const puzzle of puzzles) {
+      expect(getPuzzleImageModule(puzzle.id)).not.toBeNull();
+    }
   });
 });
