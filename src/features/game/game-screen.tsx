@@ -88,14 +88,6 @@ export function GameScreen({ puzzleId, initialGridSize }: GameScreenProps) {
   const [highlightEdges, setHighlightEdges] = useState(false);
   /** Measured width of the board shell, used to cap its height. */
   const [shellWidth, setShellWidth] = useState(0);
-  const [tooltip, setTooltip] = useState<string | null>(null);
-  const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const showTooltip = useCallback((msg: string) => {
-    if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
-    setTooltip(msg);
-    tooltipTimer.current = setTimeout(() => setTooltip(null), 1000);
-  }, []);
 
   /**
    * Whether this screen is the one on top of the stack.
@@ -585,9 +577,15 @@ export function GameScreen({ puzzleId, initialGridSize }: GameScreenProps) {
               <Art name="clock" size={20} />
               <Text style={styles.clock}>{formatClock(elapsedMs)}</Text>
             </PopSurface>
-            <Text style={styles.pieceCount}>
-              {locked}/{total}
-            </Text>
+            <PopSurface
+              fill={theme.colors.surface}
+              radius={radii.pill}
+              contentStyle={styles.clockInner}
+            >
+              <Text style={styles.pieceCount}>
+                {locked}/{total}
+              </Text>
+            </PopSurface>
           </View>
 
           <View style={styles.iconBar}>
@@ -609,10 +607,7 @@ export function GameScreen({ puzzleId, initialGridSize }: GameScreenProps) {
                 accessibilityLabel={btn.label}
                 accessibilityState={{ selected: btn.active }}
                 hitSlop={10}
-                onPress={() => {
-                  btn.onPress();
-                  showTooltip(btn.label);
-                }}
+                onPress={btn.onPress}
                 style={styles.roundButton}
               >
                 <PopSurface
@@ -626,8 +621,6 @@ export function GameScreen({ puzzleId, initialGridSize }: GameScreenProps) {
               </Pressable>
             ))}
           </View>
-
-          {tooltip != null ? <Text style={styles.tooltip}>{tooltip}</Text> : null}
 
           {/* The board is square, so a shell taller than its own width plus the
               tray can only add dead cream margin — which is exactly what the
@@ -808,7 +801,7 @@ const useStyles = createThemedStyles((theme) =>
       gap: spacing.md,
       paddingHorizontal: spacing.sm,
     },
-    pieceCount: { ...typography.heading, fontSize: 17, color: theme.colors.inkMuted },
+    pieceCount: { ...typography.heading, fontSize: 17, color: theme.colors.headingGreen },
     clockInner: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -825,12 +818,6 @@ const useStyles = createThemedStyles((theme) =>
       paddingHorizontal: spacing.sm,
     },
     toolIconInner: { alignItems: 'center', justifyContent: 'center', padding: spacing.sm },
-    tooltip: {
-      ...typography.caption,
-      color: theme.colors.inkMuted,
-      textAlign: 'center',
-      paddingTop: 2,
-    },
     // A cream tray under the board, matching the mockup: the board area is a
     // card, not an outlined box.
     boardShell: {

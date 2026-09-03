@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Image, ScrollView, StyleSheet, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -16,6 +17,7 @@ import { radii, spacing, typography } from '@/shared/theme';
 import { Art, PopButton, PopHeader, PopSurface, Text, ThemeGround } from '@/shared/ui';
 
 import { PiecePicker } from './piece-picker';
+import { jigsawLines } from './jigsaw-lines';
 
 /** The board the player touched last, so the picker can open on it. */
 function mostRecent(rows: PuzzleProgressSummary[]): PuzzleProgressSummary | null {
@@ -98,19 +100,24 @@ export function DifficultyScreen({ puzzleId }: { puzzleId: string }) {
               {selected != null &&
                 (() => {
                   const dim = Math.round(Math.sqrt(selected));
-                  const lines = Array.from({ length: dim - 1 }, (_, i) => (i + 1) / dim);
+                  const cut = jigsawLines(dim);
                   return (
-                    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                      {lines.map((fraction, i) => {
-                        const top: `${number}%` = `${fraction * 100}%`;
-                        return (
-                          <View key={`gh-${i}`}>
-                            <View style={[styles.gridLineH, { top }]} />
-                            <View style={[styles.gridLineV, { left: top }]} />
-                          </View>
-                        );
-                      })}
-                    </View>
+                    <Svg
+                      style={StyleSheet.absoluteFill}
+                      width="100%"
+                      height="100%"
+                      viewBox={`0 0 ${dim} ${dim}`}
+                      preserveAspectRatio="none"
+                      pointerEvents="none"
+                    >
+                      {cut.verticals.map((d, i) => (
+                        <Path key={`v-${i}`} d={d} stroke="#000" strokeWidth={0.06} fill="none" />
+                      ))}
+                      {cut.horizontals.map((d, i) => (
+                        <Path key={`h-${i}`} d={d} stroke="#000" strokeWidth={0.06} fill="none" />
+                      ))}
+                      <Path d={cut.outer} stroke="#000" strokeWidth={0.08} fill="none" />
+                    </Svg>
                   );
                 })()}
             </View>
@@ -164,22 +171,6 @@ const useStyles = createThemedStyles((theme) =>
     },
     previewImage: { width: '100%', height: '100%' },
     previewFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    gridLineH: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      height: 1,
-      backgroundColor: '#000',
-      opacity: 0.3,
-    },
-    gridLineV: {
-      position: 'absolute',
-      top: 0,
-      bottom: 0,
-      width: 1,
-      backgroundColor: '#000',
-      opacity: 0.3,
-    },
     pickerSpacer: { height: spacing.md },
     puzzleTitle: { ...typography.title, color: theme.colors.headingGreen, textAlign: 'center' },
     // Bottom padding as well as top: without it the button sat flush against the

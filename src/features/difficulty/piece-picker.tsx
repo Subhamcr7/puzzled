@@ -5,7 +5,7 @@ import { type PuzzleProgressSummary } from '@/data';
 import { expectedPieceCount, type GridSize } from '@/game-engine';
 import { type ArtName } from '@/shared/art';
 import { createThemedStyles } from '@/shared/themed-styles';
-import { fonts, radii, spacing, typography } from '@/shared/theme';
+import { fonts, radii, shadow, spacing, typography } from '@/shared/theme';
 import { Art, Text } from '@/shared/ui';
 
 import { indexForOffset, offsetForIndex, pickerGeometry, snapOffsets } from './picker-geometry';
@@ -122,9 +122,16 @@ export function PiecePicker({ sizes, selected, saved, onSelect }: PiecePickerPro
           >
             <View style={styles.itemBody}>
               <Art name={pieceArtFor(size)} size={40} />
-              <Text style={[styles.count, active ? styles.countActive : styles.countIdle]}>
-                {expectedPieceCount(size)}
-              </Text>
+              <View style={styles.countArea}>
+                {active ? (
+                  <View style={styles.countBox}>
+                    <Text style={styles.countActive}>{expectedPieceCount(size)}</Text>
+                    <Text style={styles.piecesLabel}>PIECES</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.countIdle}>{expectedPieceCount(size)}</Text>
+                )}
+              </View>
             </View>
             {/* A fixed-height caption keeps every item the same height, so the
                 strip's vertical centre — and the centred selection — does not
@@ -159,14 +166,41 @@ const useStyles = createThemedStyles((theme) =>
       paddingVertical: spacing.xs,
     },
     itemBody: { alignItems: 'center', gap: spacing.xs },
-    count: {
-      fontFamily: fonts.displayBold,
-      letterSpacing: -0.3,
+    // Fixed-height so the strip's vertical centre (and the centred selection)
+    // does not wander between the selected box and idle numbers.
+    countArea: {
+      height: 76,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    // The selected size: a rounded-square container holding the count and the
+    // word "PIECES", emphasised while idle counts stay slim and muted.
+    countBox: {
+      borderWidth: 3,
+      borderColor: theme.colors.headingGreen,
+      borderRadius: radii.lg,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+      alignItems: 'center',
+      backgroundColor: theme.colors.surface,
+      boxShadow: shadow.card,
     },
     // The selected size leads: bigger, in the heading green of the mockup's
     // chosen tile — which the grid expressed with a grass fill.
-    countActive: { fontSize: 34, color: theme.colors.headingGreen },
-    countIdle: { fontSize: 24, color: theme.colors.inkMuted },
+    countActive: {
+      fontFamily: fonts.displayBold,
+      fontSize: 34,
+      letterSpacing: -0.3,
+      color: theme.colors.headingGreen,
+    },
+    piecesLabel: {
+      fontFamily: fonts.bodyBold,
+      fontSize: 10,
+      letterSpacing: 1.2,
+      color: theme.colors.headingGreen,
+      marginTop: -2,
+    },
+    countIdle: { fontSize: 26, fontFamily: fonts.displayBold, color: theme.colors.inkMuted },
     captionArea: {
       height: 22,
       alignItems: 'center',
