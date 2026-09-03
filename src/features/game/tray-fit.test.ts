@@ -28,7 +28,7 @@ import {
  * if the piece path changes shape.
  */
 
-const GRID_SIZES: GridSize[] = [3, 4, 5, 6, 7, 8, 9, 10];
+const GRID_SIZES: GridSize[] = [3, 4, 5, 6, 7, 8, 9, 10, 12, 16, 20, 25, 28];
 const EDGE_VALUES = [-1, 0, 1] as const;
 
 /** Every distinct piece shape the generator can produce, for one cell size. */

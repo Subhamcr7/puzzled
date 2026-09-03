@@ -63,6 +63,7 @@ import { bakeOverlay, overlayCacheKey, type BakedOverlay } from './piece-overlay
 import {
   BOARD_SHADOW,
   boardPadding,
+  clampPieceToBoard,
   clampTrayScroll,
   maxPieceExtent,
   TRAY_GAP,
@@ -1233,14 +1234,20 @@ export function PuzzleBoard({
    * closes over may contain a Skia object.
    */
   const releaseGeometry = useMemo(() => {
-    const map: Record<string, { cx: number; cy: number; solvedX: number; solvedY: number }> = {};
+    const map: Record<
+      string,
+      { cx: number; cy: number; solvedX: number; solvedY: number; width: number; height: number }
+    > = {};
     for (const id of Object.keys(preparedById)) {
       const prepared = preparedById[id];
+      const b = prepared.localPath.bounds;
       map[id] = {
         cx: prepared.cx,
         cy: prepared.cy,
         solvedX: prepared.geometry.solvedPosition.x,
         solvedY: prepared.geometry.solvedPosition.y,
+        width: b.width,
+        height: b.height,
       };
     }
     return map;
@@ -1306,7 +1313,8 @@ export function PuzzleBoard({
     /** Distance the slider pill can travel, used to scale slider drags. */
     const trackW = Math.max(vw - TRAY_PAD * 2, 1);
     const thumbW = Math.max(56, contentW > 0 ? (vw / contentW) * trackW : trackW);
-    const trackTravel = Math.max(0, trackW - thumbW);
+    // The pill travels only between the arrow buttons, matching `trayThumbX`.
+    const trackTravel = Math.max(0, trackW - thumbW - FX.tray.sliderArrowW * 2);
     /** Canvas y at which the slider band starts. */
     const sliderTop =
       boardZoneH +
@@ -1315,6 +1323,8 @@ export function PuzzleBoard({
       FX.tray.sliderGap -
       // A few points of slop above the pill, so it is comfortable to grab.
       6;
+    /** How far the strip can scroll, computed in the gesture's own scope. */
+    const trayOverflowInternal = Math.max(0, contentW - vw);
     const looseBoxes = looseHitTestData;
 
     const releasePiece = (source: 0 | 1, index: number, canvasX: number, canvasY: number) => {
@@ -1342,18 +1352,26 @@ export function PuzzleBoard({
       const position = { x: boardX - prepared.cx, y: boardY - prepared.cy };
       const solved = { x: prepared.solvedX, y: prepared.solvedY };
 
+      // Keep the piece's full extent (including jigsaw tabs) inside the board so
+      // edge pieces never hang off the frame after an imprecise drop. `position`
+      // is the piece origin; the silhouette spans (0,0)..(width,height), so clamp
+      // so position.x ∈ [0, boardSize.width - width] (and likewise for y).
+      const clampedPosition = clampPieceToBoard(position, prepared, boardSize);
+
       const now = new Date().toISOString();
       const raised = raisePiece(sessionRef.current, id, now);
       const elapsedMs = getElapsedMsRef.current();
       const common = { session: raised, pieceId: id, solvedPosition: solved, now, elapsedMs };
 
       const placeThreshold = snapThreshold;
-      if (!isWithinSnapDistance(position, solved, placeThreshold)) {
+      if (!isWithinSnapDistance(clampedPosition, solved, placeThreshold)) {
         // Out of range on the board: leave the piece exactly where it was released so
         // it can be nudged and re-grabbed. Released over the tray, it returns to the
         // tray instead (its position never changes, so it's simply back where it was).
         if (canvasY < boardZoneH) {
-          onSessionChangeRef.current(dropPiece({ ...common, position, snapThreshold: 0 }));
+          onSessionChangeRef.current(
+            dropPiece({ ...common, position: clampedPosition, snapThreshold: 0 }),
+          );
           // The piece already rests exactly at (canvasX, canvasY) — only the
           // lift scale/tilt need to settle back to identity there.
           settleFloatingPiece(canvasX, canvasY);
@@ -1384,7 +1402,9 @@ export function PuzzleBoard({
         return;
       }
 
-      onSessionChangeRef.current(dropPiece({ ...common, position, snapThreshold: placeThreshold }));
+      onSessionChangeRef.current(
+        dropPiece({ ...common, position: clampedPosition, snapThreshold: placeThreshold }),
+      );
       impact('medium');
       playSfx('snap');
       flashId.current += 1;
@@ -1531,15 +1551,46 @@ export function PuzzleBoard({
     // grab/tray-scroll/camera-pan via `pan`, or resolves as a double-tap
     // zoom toggle — never both); camPinch (two fingers) runs simultaneously
     // alongside that pair since it never conflicts with a one-finger gesture.
-    return Gesture.Simultaneous(Gesture.Exclusive(camDoubleTap, pan), camPinch);
+    // Arrow taps are exclusive with pan: a press on the scrollbar arrows steps
+    // the tray while a drag there drags the thumb.
+    const arrowTap = Gesture.Tap()
+      .maxDuration(250)
+      .onEnd((e, success) => {
+        'worklet';
+        if (!success) return;
+        if (e.y < sliderTop || e.y > sliderTop + FX.tray.sliderHeight) return;
+        if (trayOverflowInternal <= 0) return;
+        const arrowW = FX.tray.sliderArrowW;
+        let delta = 0;
+        if (e.x < TRAY_PAD + arrowW) {
+          delta = -Math.min(trayOverflowInternal, layout.vw * 0.25);
+        } else if (e.x > vw - TRAY_PAD - arrowW) {
+          delta = Math.min(trayOverflowInternal, layout.vw * 0.25);
+        } else {
+          return;
+        }
+        const target = Math.min(0, Math.max(-trayOverflowInternal, trayScroll.value + delta));
+        if (target !== trayScroll.value) {
+          trayScroll.value = withTiming(target, {
+            duration: FX.snapMs,
+            easing: Easing.out(Easing.cubic),
+          });
+        }
+      });
+
+    return Gesture.Simultaneous(
+      Gesture.Exclusive(Gesture.Exclusive(camDoubleTap, pan), arrowTap),
+      camPinch,
+    );
   }, [
     layout,
     trayIds.length,
     looseHitTestData,
     releaseGeometry,
     snapThreshold,
-    // Decides the tray/board boundary a returned piece is parked on.
-    boardSize.height,
+    // Decides the tray/board boundary a returned piece is parked on, and the
+    // bounds the clamped drop position is held within.
+    boardSize,
     beginGrab,
     resolveGrabbedId,
     settleFloatingPiece,
@@ -1581,11 +1632,14 @@ export function PuzzleBoard({
     layout.boardZoneH + TRAY_PAD + layout.trayRowCount * TRAY_PITCH + FX.tray.sliderGap;
   const trayThumbX = useDerivedValue(() => {
     if (trayOverflow <= 0) {
-      return TRAY_PAD;
+      return TRAY_PAD + FX.tray.sliderArrowW;
     }
     // `trayScroll` runs 0 → -overflow, so negate to get 0 → 1.
     const progress = Math.min(1, Math.max(0, -trayScroll.value / trayOverflow));
-    return TRAY_PAD + progress * (trayTrackW - trayThumbW);
+    // Travel only between the two arrow buttons, so the pill never sits over one.
+    const trackInnerStart = TRAY_PAD + FX.tray.sliderArrowW;
+    const trackInnerEnd = vw - TRAY_PAD - FX.tray.sliderArrowW - trayThumbW;
+    return trackInnerStart + progress * Math.max(0, trackInnerEnd - trackInnerStart);
   });
   const trayThumbTransform = useDerivedValue(() => [{ translateX: trayThumbX.value }]);
 
@@ -1788,46 +1842,143 @@ export function PuzzleBoard({
                 Shown only when the strip actually overflows. */}
             {trayOverflow > 0 ? (
               <>
+                {/* Track: full-width rounded rectangle with thin border. */}
                 <RoundedRect
                   x={TRAY_PAD}
                   y={sliderY}
                   width={Math.max(vw - TRAY_PAD * 2, 1)}
                   height={FX.tray.sliderHeight}
-                  r={FX.tray.sliderHeight / 2}
-                  color="rgba(58,43,26,0.16)"
+                  r={12}
+                  color="rgba(58,43,26,0.10)"
                 />
-                {/* The pill: white, ringed in the app's green so it reads as a
-                    control rather than a bare highlight, with three grip lines so
-                    it looks draggable. A plain white capsule gave no hint that it
-                    was the thing to grab. */}
+                <RoundedRect
+                  x={TRAY_PAD}
+                  y={sliderY}
+                  width={Math.max(vw - TRAY_PAD * 2, 1)}
+                  height={FX.tray.sliderHeight}
+                  r={12}
+                  style="stroke"
+                  strokeWidth={1.5}
+                  color="rgba(58,43,26,0.25)"
+                />
+
+                {/* Left arrow button area. */}
+                <RoundedRect
+                  x={TRAY_PAD}
+                  y={sliderY}
+                  width={FX.tray.sliderArrowW}
+                  height={FX.tray.sliderHeight}
+                  r={12}
+                  color={theme.colors.surface}
+                />
+                <RoundedRect
+                  x={TRAY_PAD}
+                  y={sliderY}
+                  width={FX.tray.sliderArrowW}
+                  height={FX.tray.sliderHeight}
+                  r={12}
+                  style="stroke"
+                  strokeWidth={1}
+                  color="rgba(58,43,26,0.20)"
+                />
+                <Group
+                  transform={[
+                    { translateX: TRAY_PAD + (FX.tray.sliderArrowW - 12) / 2 },
+                    { translateY: sliderY + 6 },
+                  ]}
+                >
+                  <Line
+                    p1={vec(12, 0)}
+                    p2={vec(0, 6)}
+                    color={theme.colors.inkMuted}
+                    style="stroke"
+                    strokeWidth={2}
+                    strokeCap="round"
+                  />
+                  <Line
+                    p1={vec(0, 6)}
+                    p2={vec(12, 12)}
+                    color={theme.colors.inkMuted}
+                    style="stroke"
+                    strokeWidth={2}
+                    strokeCap="round"
+                  />
+                </Group>
+
+                {/* Right arrow button area. */}
+                <RoundedRect
+                  x={vw - TRAY_PAD - FX.tray.sliderArrowW}
+                  y={sliderY}
+                  width={FX.tray.sliderArrowW}
+                  height={FX.tray.sliderHeight}
+                  r={12}
+                  color={theme.colors.surface}
+                />
+                <RoundedRect
+                  x={vw - TRAY_PAD - FX.tray.sliderArrowW}
+                  y={sliderY}
+                  width={FX.tray.sliderArrowW}
+                  height={FX.tray.sliderHeight}
+                  r={12}
+                  style="stroke"
+                  strokeWidth={1}
+                  color="rgba(58,43,26,0.20)"
+                />
+                <Group
+                  transform={[
+                    {
+                      translateX:
+                        vw - TRAY_PAD - FX.tray.sliderArrowW + (FX.tray.sliderArrowW - 12) / 2,
+                    },
+                    { translateY: sliderY + 6 },
+                  ]}
+                >
+                  <Line
+                    p1={vec(0, 0)}
+                    p2={vec(12, 6)}
+                    color={theme.colors.inkMuted}
+                    style="stroke"
+                    strokeWidth={2}
+                    strokeCap="round"
+                  />
+                  <Line
+                    p1={vec(12, 6)}
+                    p2={vec(0, 12)}
+                    color={theme.colors.inkMuted}
+                    style="stroke"
+                    strokeWidth={2}
+                    strokeCap="round"
+                  />
+                </Group>
+
+                {/* Draggable pill thumb with green border. */}
                 <RoundedRect
                   x={trayThumbX}
-                  y={sliderY}
+                  y={sliderY + 3}
                   width={trayThumbW}
-                  height={FX.tray.sliderHeight}
-                  r={FX.tray.sliderHeight / 2}
+                  height={18}
+                  r={9}
                   color={theme.colors.white}
                 >
-                  <Shadow dx={0} dy={1} blur={3} color="rgba(58,43,26,0.35)" />
+                  <Shadow dx={0} dy={1} blur={3} color="rgba(58,43,26,0.25)" />
                 </RoundedRect>
                 <RoundedRect
                   x={trayThumbX}
-                  y={sliderY}
+                  y={sliderY + 3}
                   width={trayThumbW}
-                  height={FX.tray.sliderHeight}
-                  r={FX.tray.sliderHeight / 2}
+                  height={18}
+                  r={9}
                   style="stroke"
                   strokeWidth={1.5}
                   color={theme.colors.grass}
                 />
-                {/* Grip lines ride the thumb via a translated group, so only one
-                    animated value is involved rather than six derived points. */}
+                {/* Grip lines ride the thumb via a translated group. */}
                 <Group transform={trayThumbTransform}>
                   {[-5, 0, 5].map((offset) => (
                     <Line
                       key={offset}
-                      p1={vec(trayThumbW / 2 + offset, sliderY + 3)}
-                      p2={vec(trayThumbW / 2 + offset, sliderY + FX.tray.sliderHeight - 3)}
+                      p1={vec(trayThumbW / 2 + offset, sliderY + 7)}
+                      p2={vec(trayThumbW / 2 + offset, sliderY + FX.tray.sliderHeight - 4)}
                       color={theme.colors.grass}
                       style="stroke"
                       strokeWidth={1.5}

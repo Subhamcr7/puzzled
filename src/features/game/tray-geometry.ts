@@ -191,3 +191,28 @@ export function clampTrayScroll(offset: number, overflow: number): number {
   // transform, but returning it leaks negative zero into callers' comparisons.
   return clamped === 0 ? 0 : clamped;
 }
+
+/**
+ * Clamp a piece's board origin so its full silhouette (including jigsaw tabs) stays
+ * inside the board frame.
+ *
+ * `position` is the piece's top-left origin; the silhouette spans
+ * `(position.x, position.y)..(position.x + width, position.y + height)`. A piece
+ * released with its edge hanging off the frame used to be left exactly where it was
+ * dropped, so border pieces could visibly overhang the board — the fix clamps so the
+ * whole piece sits within `[0, boardSize]` along each axis.
+ *
+ * Board units, matching how positions are stored.
+ */
+export function clampPieceToBoard(
+  position: { x: number; y: number },
+  size: { width: number; height: number },
+  boardSize: { width: number; height: number },
+): { x: number; y: number } {
+  const maxX = Math.max(0, boardSize.width - size.width);
+  const maxY = Math.max(0, boardSize.height - size.height);
+  return {
+    x: Math.max(0, Math.min(maxX, position.x)),
+    y: Math.max(0, Math.min(maxY, position.y)),
+  };
+}

@@ -72,7 +72,7 @@ describe('parseCompletionRows', () => {
   it('skips a size this build cannot play rather than crashing the screen', () => {
     const rows = [
       { puzzle_id: 'a', grid_size: 4, elapsed_ms: 1, completed_at: 'x' },
-      { puzzle_id: 'b', grid_size: 12, elapsed_ms: 1, completed_at: 'x' },
+      { puzzle_id: 'b', grid_size: 29, elapsed_ms: 1, completed_at: 'x' },
       { puzzle_id: 'c', grid_size: 0, elapsed_ms: 1, completed_at: 'x' },
     ];
     expect(parseCompletionRows(rows).map((c) => c.puzzleId)).toEqual(['a']);

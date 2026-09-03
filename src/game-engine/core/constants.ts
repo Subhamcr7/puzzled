@@ -4,7 +4,9 @@ import type { GridSize } from './types';
 export const GENERATOR_ALGORITHM_VERSION = 1;
 
 /** Playable grid sizes, ascending. The generator supports any of these unchanged. */
-export const SUPPORTED_GRID_SIZES: readonly GridSize[] = [3, 4, 5, 6, 7, 8, 9, 10];
+export const SUPPORTED_GRID_SIZES: readonly GridSize[] = [
+  3, 4, 5, 6, 7, 8, 9, 10, 12, 16, 20, 25, 28,
+];
 
 export const MIN_GRID_SIZE = SUPPORTED_GRID_SIZES[0];
 export const MAX_GRID_SIZE = SUPPORTED_GRID_SIZES[SUPPORTED_GRID_SIZES.length - 1];

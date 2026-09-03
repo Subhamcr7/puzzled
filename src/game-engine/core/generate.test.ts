@@ -79,13 +79,14 @@ describe('initial layout', () => {
 
 describe('grid size support', () => {
   it('accepts only supported sizes', () => {
-    expect(SUPPORTED_GRID_SIZES).toEqual([3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(SUPPORTED_GRID_SIZES).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 12, 16, 20, 25, 28]);
     expect(isSupportedGridSize(4)).toBe(true);
     expect(isSupportedGridSize(7)).toBe(true);
     expect(isSupportedGridSize(MIN_GRID_SIZE)).toBe(true);
     expect(isSupportedGridSize(MAX_GRID_SIZE)).toBe(true);
     expect(isSupportedGridSize(2)).toBe(false);
     expect(isSupportedGridSize(11)).toBe(false);
+    expect(isSupportedGridSize(29)).toBe(false);
     expect(isSupportedGridSize(6.5)).toBe(false);
   });
 

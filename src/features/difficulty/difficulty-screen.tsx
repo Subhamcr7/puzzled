@@ -95,10 +95,30 @@ export function DifficultyScreen({ puzzleId }: { puzzleId: string }) {
                   <Art name="preview-image" size={72} />
                 </View>
               )}
+              {selected != null &&
+                (() => {
+                  const dim = Math.round(Math.sqrt(selected));
+                  const lines = Array.from({ length: dim - 1 }, (_, i) => (i + 1) / dim);
+                  return (
+                    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                      {lines.map((fraction, i) => {
+                        const top: `${number}%` = `${fraction * 100}%`;
+                        return (
+                          <View key={`gh-${i}`}>
+                            <View style={[styles.gridLineH, { top }]} />
+                            <View style={[styles.gridLineV, { left: top }]} />
+                          </View>
+                        );
+                      })}
+                    </View>
+                  );
+                })()}
             </View>
           </PopSurface>
 
           <Text style={styles.puzzleTitle}>{puzzle?.title ?? 'Puzzle'}</Text>
+
+          <View style={styles.pickerSpacer} />
 
           <PiecePicker
             sizes={SUPPORTED_GRID_SIZES}
@@ -137,13 +157,30 @@ const useStyles = createThemedStyles((theme) =>
     // A cream margin around the artwork rather than a coloured ring.
     previewFrame: { padding: spacing.sm },
     previewBody: {
-      height: 200,
+      height: 340,
       overflow: 'hidden',
       borderRadius: radii.md,
       backgroundColor: theme.colors.white,
     },
     previewImage: { width: '100%', height: '100%' },
     previewFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    gridLineH: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      height: 1,
+      backgroundColor: '#000',
+      opacity: 0.3,
+    },
+    gridLineV: {
+      position: 'absolute',
+      top: 0,
+      bottom: 0,
+      width: 1,
+      backgroundColor: '#000',
+      opacity: 0.3,
+    },
+    pickerSpacer: { height: spacing.md },
     puzzleTitle: { ...typography.title, color: theme.colors.headingGreen, textAlign: 'center' },
     // Bottom padding as well as top: without it the button sat flush against the
     // gesture bar.

@@ -17,7 +17,6 @@ import {
   cellSizeForGrid,
   countLockedPieces,
   createPlayablePuzzle,
-  createSeededRng,
   dropPiece,
   expectedPieceCount,
   findGeometry,
@@ -25,7 +24,6 @@ import {
   isSupportedGridSize,
   type GameSession,
   type GridSize,
-  type PieceState,
   type PlayablePuzzle,
   type PuzzleDefinition,
 } from '@/game-engine';
@@ -60,9 +58,6 @@ function buildPlayable(puzzle: PuzzleDefinition, gridSize: GridSize): PlayablePu
  * `y >= boardSize.height`); anything else unlocked is either loose on the
  * board or still animating into place.
  */
-function isTrayPiece(piece: PieceState, boardHeight: number): boolean {
-  return !piece.isLocked && piece.position.y >= boardHeight;
-}
 
 interface GameScreenProps {
   puzzleId: string;
@@ -93,6 +88,14 @@ export function GameScreen({ puzzleId, initialGridSize }: GameScreenProps) {
   const [highlightEdges, setHighlightEdges] = useState(false);
   /** Measured width of the board shell, used to cap its height. */
   const [shellWidth, setShellWidth] = useState(0);
+  const [tooltip, setTooltip] = useState<string | null>(null);
+  const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showTooltip = useCallback((msg: string) => {
+    if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
+    setTooltip(msg);
+    tooltipTimer.current = setTimeout(() => setTooltip(null), 1000);
+  }, []);
 
   /**
    * Whether this screen is the one on top of the stack.
@@ -443,35 +446,8 @@ export function GameScreen({ puzzleId, initialGridSize }: GameScreenProps) {
   // loose-on-board pieces exactly where they are. `PuzzleBoard` derives tray
   // slot order straight from `session.pieces`' array order (filtered to
   // unplaced + off-board), so permuting that subset is enough to reshuffle
-  // the tray without touching the engine.
-  const onShuffleTray = useCallback(() => {
-    if (!session || !playable) {
-      return;
-    }
-    const boardHeight = playable.generated.boardSize.height;
-    const trayIndices: number[] = [];
-    session.pieces.forEach((piece, index) => {
-      if (isTrayPiece(piece, boardHeight)) {
-        trayIndices.push(index);
-      }
-    });
-    if (trayIndices.length < 2) {
-      return;
-    }
-
-    const rng = createSeededRng(`${session.id}:shuffle:${Date.now()}`);
-    const shuffledGroup = trayIndices.map((index) => session.pieces[index]);
-    for (let i = shuffledGroup.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(rng() * (i + 1));
-      [shuffledGroup[i], shuffledGroup[j]] = [shuffledGroup[j], shuffledGroup[i]];
-    }
-
-    const nextPieces = [...session.pieces];
-    trayIndices.forEach((originalIndex, i) => {
-      nextPieces[originalIndex] = shuffledGroup[i];
-    });
-    onSessionChange({ ...session, pieces: nextPieces, updatedAt: new Date().toISOString() });
-  }, [session, playable, onSessionChange]);
+  // the tray without touching the engine. (Retained for a future "Shuffle"
+  // affordance; no current UI button calls it.)
 
   /**
    * "Show me one": locks a random unplaced piece at its solved position, via the
@@ -594,9 +570,6 @@ export function GameScreen({ puzzleId, initialGridSize }: GameScreenProps) {
   const { generated } = playable;
   const locked = countLockedPieces(session);
   const total = expectedPieceCount(gridSize);
-  const trayCount = session.pieces.filter((piece) =>
-    isTrayPiece(piece, generated.boardSize.height),
-  ).length;
 
   return (
     <View style={styles.screen}>
@@ -604,45 +577,57 @@ export function GameScreen({ puzzleId, initialGridSize }: GameScreenProps) {
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
         <View style={styles.content}>
           <View style={styles.header}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-              hitSlop={12}
-              onPress={() => router.back()}
-              style={styles.roundButton}
+            <PopSurface
+              fill={theme.colors.surface}
+              radius={radii.pill}
+              contentStyle={styles.clockInner}
             >
-              <Art name="back" size={26} />
-            </Pressable>
+              <Art name="clock" size={20} />
+              <Text style={styles.clock}>{formatClock(elapsedMs)}</Text>
+            </PopSurface>
+            <Text style={styles.pieceCount}>
+              {locked}/{total}
+            </Text>
+          </View>
 
-            <View style={styles.headerCenter}>
-              <Text style={styles.headerTitle} numberOfLines={1}>
-                {catalog.puzzle.title}
-              </Text>
-              <Text style={styles.headerMeta}>
-                {locked} / {total} placed
-              </Text>
-            </View>
-
-            <View style={styles.headerRight}>
-              <PopSurface
-                fill={theme.colors.surface}
-                radius={radii.pill}
-                contentStyle={styles.clockInner}
-              >
-                <Art name="clock" size={20} />
-                <Text style={styles.clock}>{formatClock(elapsedMs)}</Text>
-              </PopSurface>
+          <View style={styles.iconBar}>
+            {[
+              { art: 'back' as ArtName, label: 'Back', onPress: () => router.back() },
+              { art: 'bulb' as ArtName, label: 'Hint', onPress: () => setOverlay('hint') },
+              {
+                art: 'edges' as ArtName,
+                label: 'Edges',
+                active: highlightEdges,
+                onPress: () => setHighlightEdges((on) => !on),
+              },
+              { art: 'eye' as ArtName, label: 'Preview', onPress: () => setOverlay('preview') },
+              { art: 'pause' as ArtName, label: 'Pause', onPress: () => setOverlay('pause') },
+            ].map((btn) => (
               <Pressable
+                key={btn.label}
                 accessibilityRole="button"
-                accessibilityLabel="Pause"
+                accessibilityLabel={btn.label}
+                accessibilityState={{ selected: btn.active }}
                 hitSlop={10}
-                onPress={() => setOverlay('pause')}
+                onPress={() => {
+                  btn.onPress();
+                  showTooltip(btn.label);
+                }}
                 style={styles.roundButton}
               >
-                <Art name="pause" size={26} />
+                <PopSurface
+                  fill={btn.active ? theme.colors.honey : theme.colors.surface}
+                  radius={radii.md}
+                  elevation="card"
+                  contentStyle={styles.toolIconInner}
+                >
+                  <Art name={btn.art} size={26} />
+                </PopSurface>
               </Pressable>
-            </View>
+            ))}
           </View>
+
+          {tooltip != null ? <Text style={styles.tooltip}>{tooltip}</Text> : null}
 
           {/* The board is square, so a shell taller than its own width plus the
               tray can only add dead cream margin — which is exactly what the
@@ -666,24 +651,6 @@ export function GameScreen({ puzzleId, initialGridSize }: GameScreenProps) {
               onSessionChange={onSessionChange}
               getElapsedMs={getElapsedMs}
               highlightEdges={highlightEdges}
-            />
-          </View>
-
-          {/* Order matches the mockup's toolbar: Hint, Edges, Preview, Shuffle. */}
-          <View style={styles.toolbar}>
-            <ToolButton art="bulb" label="Hint" onPress={() => setOverlay('hint')} />
-            <ToolButton
-              art="edges"
-              label="Edges"
-              active={highlightEdges}
-              onPress={() => setHighlightEdges((on) => !on)}
-            />
-            <ToolButton art="eye" label="Preview" onPress={() => setOverlay('preview')} />
-            <ToolButton
-              art="shuffle"
-              label="Shuffle"
-              disabled={trayCount < 2}
-              onPress={onShuffleTray}
             />
           </View>
         </View>
@@ -794,57 +761,6 @@ function SettingRow({ label, children }: { label: string; children: ReactNode })
   );
 }
 
-function ToolButton({
-  art,
-  label,
-  onPress,
-  disabled,
-  active,
-  badge,
-}: {
-  art: ArtName;
-  label: string;
-  onPress?: () => void;
-  disabled?: boolean;
-  active?: boolean;
-  /** Live count shown as a small corner badge, e.g. the hint balance. */
-  badge?: number;
-}) {
-  const theme = useTheme();
-  const styles = useStyles();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={badge != null ? `${label}, ${badge} available` : label}
-      accessibilityState={{ selected: active, disabled }}
-      onPress={onPress}
-      disabled={disabled}
-      style={styles.tool}
-    >
-      <PopSurface
-        fill={active ? theme.colors.honey : theme.colors.surface}
-        radius={radii.md}
-        elevation={disabled ? 'pressed' : 'card'}
-        contentStyle={styles.toolInner}
-      >
-        <View style={styles.toolIconWrap}>
-          {/* The art is full-colour, so disabled and active states come from the
-              surface and opacity rather than from tinting the glyph. */}
-          <Art name={art} size={28} style={disabled ? styles.toolArtDisabled : undefined} />
-          {badge != null ? (
-            <View style={styles.toolBadge}>
-              <Text style={styles.toolBadgeText}>{badge}</Text>
-            </View>
-          ) : null}
-        </View>
-        <Text numberOfLines={1} style={[styles.toolLabel, disabled && styles.toolLabelDisabled]}>
-          {label}
-        </Text>
-      </PopSurface>
-    </Pressable>
-  );
-}
-
 // Kept exported for any caller still importing the old prop shape.
 export function isPlayableGridSize(value: number): value is GridSize {
   return isSupportedGridSize(value);
@@ -892,10 +808,7 @@ const useStyles = createThemedStyles((theme) =>
       gap: spacing.md,
       paddingHorizontal: spacing.sm,
     },
-    headerCenter: { flex: 1, alignItems: 'center' },
-    headerTitle: { ...typography.heading, color: theme.colors.headingGreen },
-    headerMeta: { ...typography.caption, color: theme.colors.inkMuted },
-    headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    pieceCount: { ...typography.heading, fontSize: 17, color: theme.colors.inkMuted },
     clockInner: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -904,6 +817,20 @@ const useStyles = createThemedStyles((theme) =>
       paddingVertical: 6,
     },
     clock: { ...typography.heading, fontSize: 17, color: theme.colors.ink },
+    iconBar: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: spacing.md,
+      paddingHorizontal: spacing.sm,
+    },
+    toolIconInner: { alignItems: 'center', justifyContent: 'center', padding: spacing.sm },
+    tooltip: {
+      ...typography.caption,
+      color: theme.colors.inkMuted,
+      textAlign: 'center',
+      paddingTop: 2,
+    },
     // A cream tray under the board, matching the mockup: the board area is a
     // card, not an outlined box.
     boardShell: {
@@ -926,45 +853,6 @@ const useStyles = createThemedStyles((theme) =>
        */
       marginTop: 'auto',
     },
-    toolbar: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'stretch',
-      gap: spacing.sm,
-      // No vertical padding of its own: `content`'s gap sets the space above and the
-      // safe-area inset sets the space below, so the row sits on the bottom edge.
-      paddingVertical: 0,
-    },
-    tool: { flex: 1 },
-    toolInner: { alignItems: 'center', gap: 3, paddingVertical: spacing.sm },
-    toolIconWrap: { position: 'relative' },
-    toolArtDisabled: { opacity: 0.4 },
-    toolBadge: {
-      position: 'absolute',
-      top: -6,
-      right: -10,
-      minWidth: 18,
-      height: 18,
-      borderRadius: 9,
-      paddingHorizontal: 3,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.colors.apricot,
-    },
-    toolBadgeText: {
-      ...typography.caption,
-      fontSize: 10,
-      lineHeight: 12,
-      color: theme.colors.onFill,
-    },
-    // See `PopButton`'s label: two points of measurement slack, not spacing.
-    toolLabel: {
-      ...typography.caption,
-      fontSize: 11,
-      color: theme.colors.ink,
-      paddingHorizontal: 2,
-    },
-    toolLabelDisabled: { color: theme.colors.inkMuted },
     sheetBody: { gap: spacing.md },
     pauseRows: { gap: spacing.sm },
     settingRow: {

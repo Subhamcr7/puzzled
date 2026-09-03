@@ -241,14 +241,20 @@ export const FX = {
      */
     visibleColumns: 4,
     /**
-     * Gap between the piece grid and the scroll slider, so they never touch.
-     * Widened from 12 — at that distance the slider read as part of the bottom row
-     * of pieces rather than as its own control. Trimmed from 22 to fund the third
-     * row; 16 still clears that failure, and the row pitch is tighter than the gap
-     * so the slider stays visibly separate from the grid.
+     * Gap between the piece grid and the scrollbar so the two read as separate
+     * controls. Was 16 behind a ~10dp pillow slider; the new 24dp track is a
+     * self-contained bordered control, so it needs far less clearance — trimmed to
+     * reclaim the height the taller track costs the largest board (the tallest tray
+     * rows already sit the scrollbar a full `TRAY_PAD` plus its own frame clear of
+     * the pieces). Kept at 2 (not 0) so the track never brushes the row above it.
      */
-    sliderGap: 16,
-    /** Height of the slider's track and pill. */
-    sliderHeight: 10,
+    sliderGap: 2,
+    /** Height of the scrollbar track. */
+    sliderHeight: 24,
+    /**
+     * Width of each arrow button at the scrollbar's ends. The pill travels only in
+     * the space between them, so it never covers an arrow zone.
+     */
+    sliderArrowW: 30,
   },
 } as const;
