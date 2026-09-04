@@ -569,57 +569,74 @@ export function GameScreen({ puzzleId, initialGridSize }: GameScreenProps) {
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
         <View style={styles.content}>
           <View style={styles.header}>
-            <PopSurface
-              fill={theme.colors.surface}
-              radius={radii.pill}
-              contentStyle={styles.clockInner}
-            >
-              <Art name="clock" size={20} />
-              <Text style={styles.clock}>{formatClock(elapsedMs)}</Text>
-            </PopSurface>
-            <PopSurface
-              fill={theme.colors.surface}
-              radius={radii.pill}
-              contentStyle={styles.clockInner}
-            >
-              <Text style={styles.pieceCount}>
-                {locked}/{total}
-              </Text>
-            </PopSurface>
-          </View>
+            <View style={styles.headerGroup}>
+              {[
+                { art: 'back' as ArtName, label: 'Back', onPress: () => router.back() },
+                { art: 'bulb' as ArtName, label: 'Hint', onPress: () => setOverlay('hint') },
+                {
+                  art: 'edges' as ArtName,
+                  label: 'Edges',
+                  active: highlightEdges,
+                  onPress: () => setHighlightEdges((on) => !on),
+                },
+                { art: 'eye' as ArtName, label: 'Preview', onPress: () => setOverlay('preview') },
+              ].map((btn) => (
+                <Pressable
+                  key={btn.label}
+                  accessibilityRole="button"
+                  accessibilityLabel={btn.label}
+                  accessibilityState={{ selected: btn.active }}
+                  hitSlop={10}
+                  onPress={btn.onPress}
+                  style={styles.headerRoundButton}
+                >
+                  <PopSurface
+                    fill={btn.active ? theme.colors.honey : theme.colors.surface}
+                    radius={radii.md}
+                    elevation="card"
+                    contentStyle={styles.toolIconInner}
+                  >
+                    <Art name={btn.art} size={24} />
+                  </PopSurface>
+                </Pressable>
+              ))}
+              <PopSurface
+                fill={theme.colors.surface}
+                radius={radii.pill}
+                contentStyle={styles.clockInner}
+              >
+                <Art name="clock" size={18} />
+                <Text style={styles.clock}>{formatClock(elapsedMs)}</Text>
+              </PopSurface>
+            </View>
 
-          <View style={styles.iconBar}>
-            {[
-              { art: 'back' as ArtName, label: 'Back', onPress: () => router.back() },
-              { art: 'bulb' as ArtName, label: 'Hint', onPress: () => setOverlay('hint') },
-              {
-                art: 'edges' as ArtName,
-                label: 'Edges',
-                active: highlightEdges,
-                onPress: () => setHighlightEdges((on) => !on),
-              },
-              { art: 'eye' as ArtName, label: 'Preview', onPress: () => setOverlay('preview') },
-              { art: 'pause' as ArtName, label: 'Pause', onPress: () => setOverlay('pause') },
-            ].map((btn) => (
+            <View style={styles.headerGroup}>
+              <PopSurface
+                fill={theme.colors.surface}
+                radius={radii.pill}
+                contentStyle={styles.clockInner}
+              >
+                <Text style={styles.pieceCount}>
+                  {locked}/{total}
+                </Text>
+              </PopSurface>
               <Pressable
-                key={btn.label}
                 accessibilityRole="button"
-                accessibilityLabel={btn.label}
-                accessibilityState={{ selected: btn.active }}
+                accessibilityLabel="Pause"
                 hitSlop={10}
-                onPress={btn.onPress}
-                style={styles.roundButton}
+                onPress={() => setOverlay('pause')}
+                style={styles.headerRoundButton}
               >
                 <PopSurface
-                  fill={btn.active ? theme.colors.honey : theme.colors.surface}
+                  fill={theme.colors.surface}
                   radius={radii.md}
                   elevation="card"
                   contentStyle={styles.toolIconInner}
                 >
-                  <Art name={btn.art} size={26} />
+                  <Art name="pause" size={24} />
                 </PopSurface>
               </Pressable>
-            ))}
+            </View>
           </View>
 
           {/* The board is square, so a shell taller than its own width plus the
@@ -763,11 +780,13 @@ const useStyles = createThemedStyles((theme) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.backgrounds.game },
     safeArea: { flex: 1 },
-    // The back and pause art are bare glyphs with no ground of their own, so they
-    // need a surface behind them to read against the board's pale green.
-    roundButton: {
-      width: 42,
-      height: 42,
+    // The back, edges, preview and pause art are bare glyphs with no ground of
+    // their own, so they need a surface behind them to read against the board's
+    // pale green. Sized compactly so all seven header elements fit one row even
+    // on a narrow screen.
+    headerRoundButton: {
+      width: 36,
+      height: 36,
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: radii.pill,
@@ -798,26 +817,23 @@ const useStyles = createThemedStyles((theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: spacing.md,
-      paddingHorizontal: spacing.sm,
+      gap: spacing.sm,
     },
-    pieceCount: { ...typography.heading, fontSize: 17, color: theme.colors.headingGreen },
+    headerGroup: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    pieceCount: { ...typography.heading, fontSize: 16, color: theme.colors.headingGreen },
     clockInner: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.xs,
-      paddingHorizontal: spacing.md,
-      paddingVertical: 6,
-    },
-    clock: { ...typography.heading, fontSize: 17, color: theme.colors.ink },
-    iconBar: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: spacing.md,
       paddingHorizontal: spacing.sm,
+      paddingVertical: 5,
     },
-    toolIconInner: { alignItems: 'center', justifyContent: 'center', padding: spacing.sm },
+    clock: { ...typography.heading, fontSize: 16, color: theme.colors.ink },
+    toolIconInner: { alignItems: 'center', justifyContent: 'center', padding: spacing.xs },
     // A cream tray under the board, matching the mockup: the board area is a
     // card, not an outlined box.
     boardShell: {
