@@ -62,6 +62,7 @@ import { clusterCacheKey, clusterLockedPieces } from './cluster-geometry';
 import { bakeOverlay, overlayCacheKey, type BakedOverlay } from './piece-overlay';
 import {
   BOARD_SHADOW,
+  BOARD_TOP_INSET,
   boardPadding,
   clampPieceToBoard,
   clampTrayScroll,
@@ -1116,13 +1117,15 @@ export function PuzzleBoard({
 
     /**
      * The board is square while the zone is tall, so width almost always
-     * constrains the fit and vertical slack is unavoidable. Previously the board
-     * was centred in `vh - trayH` and the tray pinned to the very bottom,
-     * which put all that slack in one visible gap between the two. Treating
-     * board + tray as one centred block distributes it as an even mat instead.
+     * constrains the fit and vertical slack is unavoidable. The board+mat block
+     * is anchored to a small inset at the top of the zone rather than centre of
+     * it, so the header-to-board gap stays tight and consistent (the mat itself
+     * is already symmetrically padded via `boardPad`). Any leftover vertical
+     * slack collects below the tray instead of floating the whole block into the
+     * middle of the screen.
      */
     const blockH = fittedH + TRAY_GAP + trayH;
-    const blockTop = Math.max(0, (vh - blockH) / 2);
+    const blockTop = Math.max(0, Math.min(vh - blockH, BOARD_TOP_INSET));
 
     const boardOffsetX = (vw - outerW * boardScale) / 2;
     const boardOffsetY = blockTop;

@@ -85,6 +85,18 @@ export const BOARD_SHADOW_REACH = BOARD_SHADOW.dy + BOARD_SHADOW.blur * 2;
 export const TRAY_GAP = 28;
 
 /**
+ * Small inset from the top of the board zone to the top of the board+mat block,
+ * in points.
+ *
+ * The board is square and the zone tall, so the board is always width-fitted and
+ * leaves vertical slack. Anchoring the block to this inset keeps the gap between
+ * the header and the board small and consistent (the mat's own `boardPad` is
+ * already symmetric), letting any leftover slack collect below the tray instead
+ * of floating the board to the vertical middle of the screen.
+ */
+export const BOARD_TOP_INSET = 10;
+
+/**
  * Total height of the tray strip: padding, the piece rows, then the slider.
  *
  * Rows are `TRAY_PITCH` tall rather than `TRAY_SLOT` tall. Sizing the band by the
