@@ -1642,7 +1642,7 @@ export function PuzzleBoard({
     const progress = Math.min(1, Math.max(0, -trayScroll.value / trayOverflow));
     // Travel only between the two arrow buttons, so the pill never sits over one.
     const trackInnerStart = TRAY_PAD + FX.tray.sliderArrowW;
-    const trackInnerEnd = vw - TRAY_PAD - FX.tray.sliderArrowW - trayThumbW;
+    const trackInnerEnd = layout.vw - TRAY_PAD - FX.tray.sliderArrowW - trayThumbW;
     return trackInnerStart + progress * Math.max(0, trackInnerEnd - trackInnerStart);
   });
   const trayThumbTransform = useDerivedValue(() => [{ translateX: trayThumbX.value }]);
