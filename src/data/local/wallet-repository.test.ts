@@ -2,7 +2,6 @@ import {
   coinsForCompletion,
   DAILY_BONUS,
   dailyBonusFor,
-  DEBUG_GRANT,
   STARTER_GRANT,
   sumLedger,
 } from './wallet-repository';
@@ -49,24 +48,6 @@ describe('coinsForCompletion', () => {
 describe('STARTER_GRANT', () => {
   it('gives a new player enough hints to learn what they do', () => {
     expect(STARTER_GRANT.deltaHints).toBeGreaterThanOrEqual(3);
-  });
-});
-
-describe('DEBUG_GRANT', () => {
-  it('credits exactly 500 coins, nothing else', () => {
-    expect(DEBUG_GRANT.deltaCoins).toBe(500);
-    expect(DEBUG_GRANT.deltaHints).toBe(0);
-  });
-
-  it('is guarded by a ref so it can never double-grant', () => {
-    expect(DEBUG_GRANT.ref).not.toBeNull();
-  });
-
-  it('is only reachable through recordOnce semantics', () => {
-    // initialize() calls recordOnce(DEBUG_GRANT), which returns the current
-    // balance untouched when reason+ref already exist in the ledger.
-    expect(DEBUG_GRANT.reason).toBe('debug-grant');
-    expect(DEBUG_GRANT.ref).toBe('dev-tester-500');
   });
 });
 

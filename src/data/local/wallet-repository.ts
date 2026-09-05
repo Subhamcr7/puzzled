@@ -78,22 +78,6 @@ export const STARTER_GRANT = {
   ref: null,
 };
 
-/**
- * Free coins for developer/QA builds only — never the shipped Release APK.
- *
- * The bundled Release APK compiles `__DEV__` to `false`, so this grant simply
- * cannot fire there. Dev builds (Metro / dev-client) credit +500 once per
- * install, pinned by `ref` so `recordOnce` can never double-grant it. Gives a
- * hand-verified build or a tester a wallet plump enough to exercise the shop
- * without earning anything first.
- */
-export const DEBUG_GRANT = {
-  deltaCoins: 500,
-  deltaHints: 0,
-  reason: 'debug-grant' as const,
-  ref: 'dev-tester-500',
-};
-
 export class SQLiteWalletRepository implements WalletRepository {
   constructor(private readonly database: SQLiteDatabase) {}
 
@@ -117,12 +101,6 @@ export class SQLiteWalletRepository implements WalletRepository {
     );
     if (!grant || grant.count === 0) {
       await this.record(STARTER_GRANT);
-    }
-
-    // Dev/QA builds only: a one-time +500 so a tester can reach the shop
-    // immediately. Compiled out of Release, so shipped builds never see it.
-    if (__DEV__) {
-      await this.recordOnce(DEBUG_GRANT);
     }
   }
 
