@@ -72,7 +72,7 @@ export function dailyBonusFor(priorStreakDays: number): number {
 export const ACHIEVEMENT_REWARD = 50;
 
 export const STARTER_GRANT = {
-  deltaCoins: 100,
+  deltaCoins: 500,
   deltaHints: 5,
   reason: 'starter-grant' as const,
   ref: null,

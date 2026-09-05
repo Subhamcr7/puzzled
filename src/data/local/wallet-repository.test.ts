@@ -46,6 +46,10 @@ describe('coinsForCompletion', () => {
 });
 
 describe('STARTER_GRANT', () => {
+  it('starts a new player with a plump wallet', () => {
+    expect(STARTER_GRANT.deltaCoins).toBe(500);
+  });
+
   it('gives a new player enough hints to learn what they do', () => {
     expect(STARTER_GRANT.deltaHints).toBeGreaterThanOrEqual(3);
   });
