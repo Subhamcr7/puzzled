@@ -37,6 +37,7 @@ import { setMusicEnabled, setSfxEnabled } from './board-audio';
 import { FX, setHapticsEnabled } from './board-fx';
 import { formatClock } from './play-clock';
 import { boardTrayReserve, PuzzleBoard } from './puzzle-board';
+import { BOARD_FRAME_PAD } from './tray-geometry';
 import { usePlayClock } from './use-play-clock';
 
 type OverlayKind = 'none' | 'pause' | 'hint' | 'preview';
@@ -847,6 +848,14 @@ const useStyles = createThemedStyles((theme) =>
       borderRadius: radii.lg,
       backgroundColor: theme.colors.surface,
       boxShadow: shadow.card,
+      /**
+       * The uniform frame between the rounded shell edge and the mat/tray block.
+       * The canvas measures the padded inner box, so the board, shelf, scrollbar
+       * and every gesture inherit it — one value for every grid, no per-size
+       * layouts. Keeps the board's corners clear of the shell's rounded corners
+       * instead of crowding them (worst on the dense grids).
+       */
+      padding: BOARD_FRAME_PAD,
       /**
        * Absorbs the leftover column height above the board rather than below the
        * toolbar.

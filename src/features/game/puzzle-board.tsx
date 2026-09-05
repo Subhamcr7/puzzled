@@ -7,6 +7,7 @@ import {
   Circle,
   Group,
   Image,
+  LinearGradient,
   Line,
   Path,
   PathOp,
@@ -1954,35 +1955,49 @@ export function PuzzleBoard({
                   />
                 </Group>
 
-                {/* Draggable pill thumb with green border. */}
-                <RoundedRect
-                  x={trayThumbX}
-                  y={sliderY + 3}
-                  width={trayThumbW}
-                  height={18}
-                  r={9}
-                  color={theme.colors.white}
-                >
-                  <Shadow dx={0} dy={1} blur={3} color="rgba(58,43,26,0.25)" />
-                </RoundedRect>
-                <RoundedRect
-                  x={trayThumbX}
-                  y={sliderY + 3}
-                  width={trayThumbW}
-                  height={18}
-                  r={9}
-                  style="stroke"
-                  strokeWidth={1.5}
-                  color={theme.colors.grass}
-                />
-                {/* Grip lines ride the thumb via a translated group. */}
+                {/* Draggable pill thumb with a theme-driven gradient. The pill and
+                    its grip lines share `trayThumbTransform`, so the gradient's
+                    coordinates are drawn in that group's *local* space — fixed at
+                    x 0 → trayThumbW — which pins the direction to LEFT→RIGHT no
+                    matter where on the track the pill currently sits. The colours
+                    come from the active theme (`trayScrollbarStart`/`trayScrollbarEnd`),
+                    so switching theme restyles the thumb without touching this file. */}
                 <Group transform={trayThumbTransform}>
+                  <RoundedRect
+                    x={0}
+                    y={sliderY + 3}
+                    width={trayThumbW}
+                    height={18}
+                    r={9}
+                    color={theme.colors.trayScrollbarStart}
+                  >
+                    <Shadow dx={0} dy={1} blur={3} color="rgba(58,43,26,0.25)" />
+                    <LinearGradient
+                      start={vec(0, sliderY + 12)}
+                      end={vec(trayThumbW, sliderY + 12)}
+                      colors={[theme.colors.trayScrollbarStart, theme.colors.trayScrollbarEnd]}
+                    />
+                  </RoundedRect>
+                  <RoundedRect
+                    x={0}
+                    y={sliderY + 3}
+                    width={trayThumbW}
+                    height={18}
+                    r={9}
+                    style="stroke"
+                    strokeWidth={1.5}
+                    color="rgba(58,43,26,0.25)"
+                  />
+                  {/* Grip lines. White rather than grass: grass is nearly invisible
+                      on the light start end of the gradient, while white holds on
+                      both the pale left and the deep right. */}
                   {[-5, 0, 5].map((offset) => (
                     <Line
                       key={offset}
                       p1={vec(trayThumbW / 2 + offset, sliderY + 7)}
                       p2={vec(trayThumbW / 2 + offset, sliderY + FX.tray.sliderHeight - 4)}
-                      color={theme.colors.grass}
+                      color={theme.colors.onFill}
+                      opacity={0.75}
                       style="stroke"
                       strokeWidth={1.5}
                     />

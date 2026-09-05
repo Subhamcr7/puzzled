@@ -1,7 +1,9 @@
 import { buildPieceLocalPath, cellSizeForGrid, TAB_SIZE_RATIO, type GridSize } from '@/game-engine';
+import { spacing } from '@/shared/theme';
 
 import { FX } from './board-fx';
 import {
+  BOARD_FRAME_PAD,
   BOARD_SHADOW_REACH,
   boardPadding,
   clampTrayScroll,
@@ -297,5 +299,34 @@ describe('tray scroll clamp', () => {
 
   it('never scrolls past the leftmost piece', () => {
     expect(clampTrayScroll(50, 100)).toBe(0);
+  });
+});
+
+describe('board frame padding', () => {
+  // The shell's inner box, recomposed the same way `tray-fit`'s vertical-budget
+  // block does above — outer measured width less the two frame pads.
+  const SHELL_WIDTH = 384.8;
+  const INNER_WIDTH = SHELL_WIDTH - BOARD_FRAME_PAD * 2;
+
+  it('frames the play block with the design system eyebrow, not a per-size value', () => {
+    // Pinned so nobody shaves the inset back toward 0 — the run-into-the-frame
+    // look this exists to prevent. Tied to `spacing.sm` so it belongs to the
+    // spacing vocabulary rather than being an orphan number.
+    expect(BOARD_FRAME_PAD).toBe(spacing.sm);
+  });
+
+  it.each(GRID_SIZES)('keeps the %ix mat clear of the frame in the padded shell', (gridSize) => {
+    // The canvas measures the shell's *inner* box and fits the mat to 0.96 of it,
+    // so mat + both frame pads must always sit inside the shell — at every grid,
+    // from 3×3 to 28×28, with no per-size layout. Mirrors `fittedMat`/`reserve`
+    // from the vertical-budget block so it tracks the same real numbers.
+    const reserve =
+      trayHeight(trayRows(gridSize, FX.tray.rows), FX.tray.sliderGap, FX.tray.sliderHeight) +
+      TRAY_GAP;
+    const shellHeight = Math.min(SHELL_WIDTH + reserve, 684.7);
+    const mat = Math.min(INNER_WIDTH * 0.96, shellHeight - BOARD_FRAME_PAD * 2 - reserve);
+
+    expect(mat + BOARD_FRAME_PAD * 2).toBeLessThanOrEqual(SHELL_WIDTH + 1e-9);
+    expect(BOARD_FRAME_PAD * 2 + (INNER_WIDTH - mat) / 2).toBeGreaterThanOrEqual(8);
   });
 });

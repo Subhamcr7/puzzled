@@ -97,6 +97,21 @@ export const TRAY_GAP = 28;
 export const BOARD_TOP_INSET = 10;
 
 /**
+ * Uniform screen-point inset between the rounded outer frame (the board shell)
+ * and the board/tray block drawn inside it.
+ *
+ * `game-screen.tsx` applies this as the shell's own padding, so the canvas
+ * measures the *padded* inner box and the mat, tray shelf, scrollbar and their
+ * gestures all inherit the inset — one value, every grid. Without it the mat sat
+ * ~8pt from the shell's sides and top, so its corners crowded the rounded frame
+ * (worst visually on dense grids) instead of reading as a picture inside a mat.
+ *
+ * Do not "fix" the look by shaving this to 0 — that is the run-into-the-frame
+ * look it exists to prevent (see `tray-fit.test.ts`).
+ */
+export const BOARD_FRAME_PAD = 8;
+
+/**
  * Total height of the tray strip: padding, the piece rows, then the slider.
  *
  * Rows are `TRAY_PITCH` tall rather than `TRAY_SLOT` tall. Sizing the band by the

@@ -111,6 +111,9 @@ export const WOOD: Theme = {
     paper: '#E2CBA8',
     /** Paper cards on the desk — warmer and lighter than the meadow's cream. */
     surface: '#F7E9CB',
+    /** The tray scrollbar thumb reads as warm oak rather than grass. */
+    trayScrollbarStart: '#C19A6C',
+    trayScrollbarEnd: '#BA8A65',
   },
   backgrounds: {
     homeSky: '#E2CBA8',

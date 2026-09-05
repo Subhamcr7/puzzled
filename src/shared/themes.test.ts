@@ -181,6 +181,25 @@ describe('themes', () => {
     expect(themeById(DEFAULT_THEME_ID).price).toBe(0);
   });
 
+  it('gives every theme a scrollbar gradient pair', () => {
+    // The tray scrollbar thumb reads its L→R gradient from these tokens, so a
+    // theme without them cannot render (and the hex-scan below would not catch it
+    // — the values live in the palette layer, which is exempt).
+    for (const theme of THEMES) {
+      expect(theme.colors.trayScrollbarStart).toMatch(/^#[0-9A-Fa-f]{6}$/);
+      expect(theme.colors.trayScrollbarEnd).toMatch(/^#[0-9A-Fa-f]{6}$/);
+    }
+  });
+
+  it('ships the specified per-theme scrollbar gradients', () => {
+    const meadow = themeById('meadow');
+    const wood = themeById('wood');
+    expect(meadow.colors.trayScrollbarStart).toBe('#A4FF7D');
+    expect(meadow.colors.trayScrollbarEnd).toBe('#0A8B24');
+    expect(wood.colors.trayScrollbarStart).toBe('#C19A6C');
+    expect(wood.colors.trayScrollbarEnd).toBe('#BA8A65');
+  });
+
   it('falls back rather than throwing on an id it does not know', () => {
     // A row written by a build that shipped a theme this one does not have.
     expect(themeById('lunar')).toBe(MEADOW);

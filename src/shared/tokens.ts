@@ -68,6 +68,16 @@ export const colors = {
 
   /** Text placed on top of a saturated fill. */
   onFill: '#FFFFFF',
+
+  /**
+   * The tray scrollbar thumb's horizontal gradient, light → dark.
+   *
+   * Consumed by the scrollbar as a pair (`trayScrollbarStart` on the left,
+   * `trayScrollbarEnd` on the right). Kept in the palette so every theme must
+   * supply it — the thumb must follow the active theme, never hardcode its own.
+   */
+  trayScrollbarStart: '#A4FF7D',
+  trayScrollbarEnd: '#0A8B24',
 } as const;
 
 /**
