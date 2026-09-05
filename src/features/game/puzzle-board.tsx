@@ -1973,6 +1973,7 @@ export function PuzzleBoard({
                   >
                     <Shadow dx={0} dy={1} blur={3} color="rgba(58,43,26,0.25)" />
                     <LinearGradient
+                      key={theme.id}
                       start={vec(0, sliderY + 12)}
                       end={vec(trayThumbW, sliderY + 12)}
                       colors={[theme.colors.trayScrollbarStart, theme.colors.trayScrollbarEnd]}
