@@ -95,7 +95,8 @@ export type LedgerReason =
   | 'theme-unlock'
   | 'treasure-stop'
   | 'coin-purchase'
-  | 'starter-grant';
+  | 'starter-grant'
+  | 'debug-grant';
 
 export interface LedgerEntry {
   id: number;
