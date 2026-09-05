@@ -1,10 +1,10 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Image, ScrollView, StyleSheet, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
+  coinsForCompletion,
   getProgressRepository,
   getPuzzleById,
   resolvePuzzleImageSource,
@@ -17,7 +17,6 @@ import { radii, spacing, typography } from '@/shared/theme';
 import { Art, PopButton, PopHeader, PopSurface, Text, ThemeGround } from '@/shared/ui';
 
 import { PiecePicker } from './piece-picker';
-import { jigsawLines } from './jigsaw-lines';
 
 /** The board the player touched last, so the picker can open on it. */
 function mostRecent(rows: PuzzleProgressSummary[]): PuzzleProgressSummary | null {
@@ -71,6 +70,12 @@ export function DifficultyScreen({ puzzleId }: { puzzleId: string }) {
     });
   };
 
+  // The reward the puzzle pays on completion is tied to the *selected* board
+  // size — the same `coinsForCompletion` the game screen credits — so the pill
+  // below tracks the carousel. Falls back to the puzzle's default size while it
+  // loads, so the pill never flashes in blank.
+  const reward = puzzle != null ? coinsForCompletion(selected ?? puzzle.gridSize) : 0;
+
   return (
     <View style={styles.root}>
       <ThemeGround />
@@ -88,6 +93,7 @@ export function DifficultyScreen({ puzzleId }: { puzzleId: string }) {
             <View style={styles.previewBody}>
               {image != null ? (
                 <Image
+                  testID="difficulty-preview-image"
                   source={typeof image === 'number' ? image : { uri: image }}
                   style={styles.previewImage}
                   resizeMode="cover"
@@ -97,33 +103,19 @@ export function DifficultyScreen({ puzzleId }: { puzzleId: string }) {
                   <Art name="preview-image" size={72} />
                 </View>
               )}
-              {selected != null &&
-                (() => {
-                  const dim = Math.round(Math.sqrt(selected));
-                  const cut = jigsawLines(dim);
-                  return (
-                    <Svg
-                      style={StyleSheet.absoluteFill}
-                      width="100%"
-                      height="100%"
-                      viewBox={`0 0 ${dim} ${dim}`}
-                      preserveAspectRatio="none"
-                      pointerEvents="none"
-                    >
-                      {cut.verticals.map((d, i) => (
-                        <Path key={`v-${i}`} d={d} stroke="#000" strokeWidth={0.06} fill="none" />
-                      ))}
-                      {cut.horizontals.map((d, i) => (
-                        <Path key={`h-${i}`} d={d} stroke="#000" strokeWidth={0.06} fill="none" />
-                      ))}
-                      <Path d={cut.outer} stroke="#000" strokeWidth={0.08} fill="none" />
-                    </Svg>
-                  );
-                })()}
             </View>
           </PopSurface>
 
-          <Text style={styles.puzzleTitle}>{puzzle?.title ?? 'Puzzle'}</Text>
+          <View
+            accessible
+            accessibilityRole="text"
+            accessibilityLabel={`Reward: ${reward} coins`}
+            style={styles.rewardPill}
+          >
+            <Text style={styles.rewardLabel}>Reward:</Text>
+            <Art name="coin" size={20} />
+            <Text style={styles.rewardValue}>{reward}</Text>
+          </View>
 
           <View style={styles.pickerSpacer} />
 
@@ -172,7 +164,21 @@ const useStyles = createThemedStyles((theme) =>
     previewImage: { width: '100%', height: '100%' },
     previewFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     pickerSpacer: { height: spacing.md },
-    puzzleTitle: { ...typography.title, color: theme.colors.headingGreen, textAlign: 'center' },
+    // The reward, read in one glance like the coin pills on Home and the
+    // Puzzles screen: surface pill, coin art, the real amount.
+    rewardPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'center',
+      gap: spacing.xs,
+      paddingLeft: spacing.md,
+      paddingRight: spacing.md,
+      paddingVertical: spacing.xs,
+      borderRadius: radii.pill,
+      backgroundColor: theme.colors.surface,
+    },
+    rewardLabel: { ...typography.caption, color: theme.colors.inkMuted },
+    rewardValue: { ...typography.label, fontSize: 16, color: theme.colors.ink },
     // Bottom padding as well as top: without it the button sat flush against the
     // gesture bar.
     footer: {

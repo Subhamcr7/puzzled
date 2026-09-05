@@ -8,7 +8,6 @@ import { Art, EnterView, PopIcon, PopSurface, Text } from '@/shared/ui';
 import { type TileBadge } from './tile-progress';
 
 interface PuzzleTileProps {
-  title: string;
   /** Straight from `resolvePuzzleImageSource`: a require() id, a uri, or nothing. */
   source: number | string | null;
   badge: TileBadge | null;
@@ -30,19 +29,20 @@ interface PuzzleTileProps {
  * "Choose 3×3 up to 10×10" — that sentence belongs on the screen the tap opens,
  * and it is already there as the picker itself.
  */
-export function PuzzleTile({ title, source, badge, index, onPress }: PuzzleTileProps) {
+export function PuzzleTile({ source, badge, index, onPress }: PuzzleTileProps) {
   const theme = useTheme();
   const styles = useStyles();
 
-  // Composed rather than left to the badge's own text: a screen reader hitting
-  // one pressable should hear the whole cell, and "40%" alone read after the
-  // title of the *next* tile would be meaningless.
+  // A visual gallery announces the picture, not the name: the artwork itself is
+  // the identity, and the app keeps puzzle titles for the places that need them
+  // (navigation, game logic). The label stays title-free and reads the state a
+  // sighted player gets from the badge alone.
   const label =
     badge == null
-      ? title
+      ? 'Puzzle image. Double tap to select.'
       : badge.kind === 'completed'
-        ? `${title}, completed`
-        : `${title}, ${badge.percent}% complete`;
+        ? 'Puzzle image, completed. Double tap to select.'
+        : `Puzzle image, ${badge.percent}% complete. Double tap to select.`;
 
   return (
     <EnterView index={index} style={styles.tile}>
@@ -86,10 +86,6 @@ export function PuzzleTile({ title, source, badge, index, onPress }: PuzzleTileP
               </View>
             ) : null}
           </View>
-
-          <Text style={styles.title} numberOfLines={1}>
-            {title}
-          </Text>
         </PopSurface>
       </Pressable>
     </EnterView>
@@ -140,11 +136,5 @@ const useStyles = createThemedStyles((theme) =>
       paddingVertical: 3,
     },
     badgeText: { ...typography.label, fontSize: 10, color: theme.colors.onFill },
-    title: {
-      ...typography.caption,
-      color: theme.colors.ink,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.sm,
-    },
   }),
 );

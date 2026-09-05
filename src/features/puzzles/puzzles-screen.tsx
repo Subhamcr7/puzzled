@@ -12,9 +12,8 @@ import {
 } from '@/data';
 import { type PuzzleDefinition } from '@/game-engine';
 import { radii, spacing, typography } from '@/shared/theme';
-import { useTheme } from '@/shared/theme-context';
 import { createThemedStyles } from '@/shared/themed-styles';
-import { Art, PopIcon, PopSurface, Text, ThemeGround, useTabBarSpace } from '@/shared/ui';
+import { Art, Text, ThemeGround, useTabBarSpace } from '@/shared/ui';
 
 import { PuzzleTile } from './puzzle-tile';
 import { tileBadge } from './tile-progress';
@@ -36,7 +35,6 @@ const EMPTY: CatalogData = { bundled: [], user: [], byPuzzle: {}, coins: null };
  * screen — the picture is what you browse and tap.
  */
 export function PuzzlesScreen() {
-  const theme = useTheme();
   const styles = useStyles();
   const router = useRouter();
   const [data, setData] = useState<CatalogData>(EMPTY);
@@ -111,34 +109,10 @@ export function PuzzlesScreen() {
               </Pressable>
             </View>
 
-            <Pressable
-              onPress={() =>
-                router.push({ pathname: '/pack/[packId]', params: { packId: 'starter' } })
-              }
-              accessibilityRole="button"
-              accessibilityLabel="Browse the Starter Pack"
-            >
-              <PopSurface
-                fill={theme.colors.honey}
-                radius={radii.md}
-                contentStyle={styles.packFrame}
-              >
-                <View style={styles.packBody}>
-                  <Art name="collection" size={30} />
-                  <View style={styles.packCopy}>
-                    <Text style={styles.packTitle}>Starter Pack</Text>
-                    <Text style={styles.packMeta}>Every puzzle bundled with Puzzled</Text>
-                  </View>
-                  <PopIcon name="chevron" size={20} color={theme.colors.inkMuted} />
-                </View>
-              </PopSurface>
-            </Pressable>
-
             <View style={styles.grid}>
               {all.map((puzzle, index) => (
                 <PuzzleTile
                   key={puzzle.id}
-                  title={puzzle.title}
                   source={resolvePuzzleImageSource(puzzle)}
                   badge={tileBadge(data.byPuzzle[puzzle.id] ?? [])}
                   index={index}
@@ -187,20 +161,6 @@ const useStyles = createThemedStyles((theme) =>
       backgroundColor: theme.colors.surface,
     },
     coinText: { ...typography.label, color: theme.colors.ink },
-    // Inset padding on the coloured `PopSurface` face, so a ring of `fill` shows
-    // as a frame around the white body nested inside it.
-    packFrame: { padding: spacing.xs },
-    packBody: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.md,
-      padding: spacing.md,
-      borderRadius: radii.sm,
-      backgroundColor: theme.colors.surface,
-    },
-    packCopy: { flex: 1, gap: 2 },
-    packTitle: { ...typography.heading, fontSize: 17, color: theme.colors.ink },
-    packMeta: { ...typography.caption, color: theme.colors.inkMuted },
     /**
      * Two columns, gutter by `space-between` rather than `gap`: two 48% cells
      * plus a real gap can overflow the row on RN. Each tile's own `width: '48%'`
