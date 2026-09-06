@@ -103,6 +103,13 @@ describe('DifficultyScreen', () => {
     }
   });
 
+  it('shows no N×N text anywhere on screen', async () => {
+    const rendered = await renderScreen();
+    // UI pass: the picker caption reads only the tier ("Medium"), never "6×6".
+    // No grid dimension is formatted anywhere on this screen.
+    expect(rendered.queryByText(/×/)).toBeNull();
+  });
+
   it('still offers Start Puzzle with no saved board', async () => {
     const rendered = await renderScreen();
     expect(rendered.getByText('Start Puzzle')).toBeTruthy();

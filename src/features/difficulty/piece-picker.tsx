@@ -139,7 +139,7 @@ export function PiecePicker({ sizes, selected, saved, onSelect }: PiecePickerPro
             <View style={styles.captionArea}>
               {active ? (
                 <Text style={styles.tier} numberOfLines={1}>
-                  {tierFor(size)} · {size}×{size}
+                  {tierFor(size)}
                 </Text>
               ) : null}
               {active && board ? (

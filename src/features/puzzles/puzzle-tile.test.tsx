@@ -1,4 +1,5 @@
 import { fireEvent, render } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 
 import { PuzzleTile } from './puzzle-tile';
 
@@ -98,5 +99,13 @@ describe('PuzzleTile', () => {
     expect(getByLabelText('Puzzle image. Double tap to select.').props.accessibilityRole).toBe(
       'button',
     );
+  });
+
+  it('wears the compact UI-pass column width of 49%', () => {
+    // The parent grid scatters the tiles with `space-between`, so the width on
+    // this tile's own cell decides the horizontal gutter. 49% (up from 48%)
+    // leaves a slim 2% gap instead of a 4% one.
+    const { root } = renderTile();
+    expect(StyleSheet.flatten(root.props.style).width).toBe('49%');
   });
 });

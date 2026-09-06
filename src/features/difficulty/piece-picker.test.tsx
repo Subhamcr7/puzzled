@@ -77,6 +77,14 @@ describe('PiecePicker', () => {
     expect(onSelect).toHaveBeenCalledWith(5);
   });
 
+  it('shows only the tier under the selection, never an N×N caption', () => {
+    const { getByText, queryByText } = renderPicker({ selected: 25 });
+    // UI pass: the caption lost its "· 25×25" suffix. The tier alone reads the
+    // difficulty; the grid size is a solver detail the screen no longer shows.
+    expect(getByText('Hard')).toBeTruthy();
+    expect(queryByText(/×/)).toBeNull();
+  });
+
   it('is a drop-in for the tile grid: a saved board shows its pill and label', () => {
     const saved = new Map<GridSize, PuzzleProgressSummary>([[4, summary()]]);
     const { getByLabelText, getByText } = renderPicker({ selected: 4, saved });

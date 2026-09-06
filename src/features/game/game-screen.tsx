@@ -38,7 +38,15 @@ import { FX, setHapticsEnabled } from './board-fx';
 import { formatClock } from './play-clock';
 import { boardTrayReserve, PuzzleBoard } from './puzzle-board';
 import { BOARD_FRAME_PAD } from './tray-geometry';
+
 import { usePlayClock } from './use-play-clock';
+
+/**
+ * The UI pass made every game-header control 20% larger while keeping the row a
+ * single line. Applied to button size, art, text and box padding; the gaps
+ * between controls stay on the spacing scale so the row never crowds the board.
+ */
+const HEADER_SCALE = 1.2;
 
 type OverlayKind = 'none' | 'pause' | 'hint' | 'preview';
 
@@ -597,7 +605,7 @@ export function GameScreen({ puzzleId, initialGridSize }: GameScreenProps) {
                     elevation="card"
                     contentStyle={styles.toolIconInner}
                   >
-                    <Art name={btn.art} size={24} />
+                    <Art name={btn.art} size={24 * HEADER_SCALE} />
                   </PopSurface>
                 </Pressable>
               ))}
@@ -615,7 +623,7 @@ export function GameScreen({ puzzleId, initialGridSize }: GameScreenProps) {
                 radius={radii.pill}
                 contentStyle={styles.infoBox}
               >
-                <Art name="clock" size={16} />
+                <Art name="clock" size={16 * HEADER_SCALE} />
                 <Text style={styles.clock}>{formatClock(elapsedMs)}</Text>
               </PopSurface>
             </View>
@@ -634,7 +642,7 @@ export function GameScreen({ puzzleId, initialGridSize }: GameScreenProps) {
                   elevation="card"
                   contentStyle={styles.toolIconInner}
                 >
-                  <Art name="pause" size={24} />
+                  <Art name="pause" size={24 * HEADER_SCALE} />
                 </PopSurface>
               </Pressable>
             </View>
@@ -783,11 +791,11 @@ const useStyles = createThemedStyles((theme) =>
     safeArea: { flex: 1 },
     // The back, edges, preview and pause art are bare glyphs with no ground of
     // their own, so they need a surface behind them to read against the board's
-    // pale green. Sized compactly so all seven header elements fit one row even
-    // on a narrow screen.
+    // pale green. Scaled 1.2× for the UI pass; still compact enough that the
+    // seven header elements stay on one row.
     headerRoundButton: {
-      width: 32,
-      height: 32,
+      width: 32 * HEADER_SCALE,
+      height: 32 * HEADER_SCALE,
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: radii.pill,
@@ -825,7 +833,11 @@ const useStyles = createThemedStyles((theme) =>
       alignItems: 'center',
       gap: spacing.xs,
     },
-    pieceCount: { ...typography.heading, fontSize: 16, color: theme.colors.headingGreen },
+    pieceCount: {
+      ...typography.heading,
+      fontSize: 16 * HEADER_SCALE,
+      color: theme.colors.headingGreen,
+    },
     // The count and timer share one box style so they read as a matching pair:
     // same height, same internal padding, rounded pills, content centred with
     // enough breathing room that the values never sit tight against the edges.
@@ -833,12 +845,16 @@ const useStyles = createThemedStyles((theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: spacing.xs,
-      paddingHorizontal: spacing.md,
-      paddingVertical: 6,
+      gap: spacing.xs * HEADER_SCALE,
+      paddingHorizontal: spacing.md * HEADER_SCALE,
+      paddingVertical: 6 * HEADER_SCALE,
     },
-    clock: { ...typography.heading, fontSize: 16, color: theme.colors.ink },
-    toolIconInner: { alignItems: 'center', justifyContent: 'center', padding: spacing.xs },
+    clock: { ...typography.heading, fontSize: 16 * HEADER_SCALE, color: theme.colors.ink },
+    toolIconInner: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: spacing.xs * HEADER_SCALE,
+    },
     // A cream tray under the board, matching the mockup: the board area is a
     // card, not an outlined box.
     boardShell: {

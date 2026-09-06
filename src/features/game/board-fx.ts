@@ -251,10 +251,5 @@ export const FX = {
     sliderGap: 2,
     /** Height of the scrollbar track. */
     sliderHeight: 24,
-    /**
-     * Width of each arrow button at the scrollbar's ends. The pill travels only in
-     * the space between them, so it never covers an arrow zone.
-     */
-    sliderArrowW: 30,
   },
 } as const;

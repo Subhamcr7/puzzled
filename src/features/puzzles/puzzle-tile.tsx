@@ -110,10 +110,11 @@ const useStyles = createThemedStyles((theme) =>
     /**
      * The column width lives here rather than on the grid container. Percentage
      * widths and `columnGap` fight each other in RN — two 48% cells plus a gap
-     * can overflow the row and drop the second tile — so the 4% left over is
-     * spent by the parent's `justifyContent: 'space-between'` instead.
+     * can overflow the row and drop the second tile — so the left-over room is
+     * spent by the parent's `justifyContent: 'space-between'` instead. Trimmed
+     * from 48% in the UI pass so the two tiles sit closer together.
      */
-    tile: { width: '48%' },
+    tile: { width: '49%' },
     /** No padding: the image runs to the tile's edge, which is the whole design. */
     frame: { padding: 0 },
     /**

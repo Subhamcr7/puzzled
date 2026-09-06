@@ -112,5 +112,12 @@ describe('FX tuning', () => {
       expect(FX.tray.sliderGap).toBeGreaterThan(0);
       expect(FX.tray.sliderHeight).toBeGreaterThan(0);
     });
+
+    it('has no arrow buttons at the track ends', () => {
+      // UI pass: the side arrows and their 30dp reserved zones were removed. The
+      // pill now travels the whole track (matching `puzzle-board.tsx`'s
+      // `trackInnerStart`/`trackInnerEnd`), so the tuning must not sneak back.
+      expect(Object.keys(FX.tray).filter((key) => key.includes('arrow'))).toEqual([]);
+    });
   });
 });

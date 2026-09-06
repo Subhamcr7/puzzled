@@ -162,15 +162,16 @@ const useStyles = createThemedStyles((theme) =>
     },
     coinText: { ...typography.label, color: theme.colors.ink },
     /**
-     * Two columns, gutter by `space-between` rather than `gap`: two 48% cells
-     * plus a real gap can overflow the row on RN. Each tile's own `width: '48%'`
-     * comes from `puzzle-tile.tsx`, so the grid only needs the spacing.
+     * Two columns, gutter by `space-between` rather than `gap`: two width-
+     * per-cent cells plus a real gap can overflow the row on RN. Each tile's own
+     * `width: '49%'` comes from `puzzle-tile.tsx`, so the grid only needs the
+     * spacing. Rows tightened to `sm` in the UI pass, matching the tighter tiles.
      */
     grid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       justifyContent: 'space-between',
-      rowGap: spacing.md,
+      rowGap: spacing.sm,
     },
     empty: { ...typography.body, color: theme.colors.inkMuted },
   }),
