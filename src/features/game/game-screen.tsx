@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Image as RNImage, Pressable, StyleSheet, View } from 'react-native';
+import { Image as RNImage, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -30,23 +30,15 @@ import {
 import { radii, shadow, spacing, typography } from '@/shared/theme';
 import { useTheme } from '@/shared/theme-context';
 import { createThemedStyles } from '@/shared/themed-styles';
-import { type ArtName } from '@/shared/art';
 import { Art, PopButton, PopSheet, PopSurface, PopToggle, Text, ThemeGround } from '@/shared/ui';
 
 import { setMusicEnabled, setSfxEnabled } from './board-audio';
 import { FX, setHapticsEnabled } from './board-fx';
-import { formatClock } from './play-clock';
+import { GameHeader } from './game-header';
 import { boardTrayReserve, PuzzleBoard } from './puzzle-board';
 import { BOARD_FRAME_PAD } from './tray-geometry';
 
 import { usePlayClock } from './use-play-clock';
-
-/**
- * The UI pass made every game-header control 20% larger while keeping the row a
- * single line. Applied to button size, art, text and box padding; the gaps
- * between controls stay on the spacing scale so the row never crowds the board.
- */
-const HEADER_SCALE = 1.2;
 
 type OverlayKind = 'none' | 'pause' | 'hint' | 'preview';
 
@@ -577,76 +569,17 @@ export function GameScreen({ puzzleId, initialGridSize }: GameScreenProps) {
       <ThemeGround />
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
         <View style={styles.content}>
-          <View style={styles.header}>
-            <View style={styles.headerGroup}>
-              {[
-                { art: 'back' as ArtName, label: 'Back', onPress: () => router.back() },
-                { art: 'bulb' as ArtName, label: 'Hint', onPress: () => setOverlay('hint') },
-                {
-                  art: 'edges' as ArtName,
-                  label: 'Edges',
-                  active: highlightEdges,
-                  onPress: () => setHighlightEdges((on) => !on),
-                },
-                { art: 'eye' as ArtName, label: 'Preview', onPress: () => setOverlay('preview') },
-              ].map((btn) => (
-                <Pressable
-                  key={btn.label}
-                  accessibilityRole="button"
-                  accessibilityLabel={btn.label}
-                  accessibilityState={{ selected: btn.active }}
-                  hitSlop={10}
-                  onPress={btn.onPress}
-                  style={styles.headerRoundButton}
-                >
-                  <PopSurface
-                    fill={btn.active ? theme.colors.honey : theme.colors.surface}
-                    radius={radii.md}
-                    elevation="card"
-                    contentStyle={styles.toolIconInner}
-                  >
-                    <Art name={btn.art} size={24 * HEADER_SCALE} />
-                  </PopSurface>
-                </Pressable>
-              ))}
-              <PopSurface
-                fill={theme.colors.surface}
-                radius={radii.pill}
-                contentStyle={styles.infoBox}
-              >
-                <Text style={styles.pieceCount}>
-                  {locked}/{total}
-                </Text>
-              </PopSurface>
-              <PopSurface
-                fill={theme.colors.surface}
-                radius={radii.pill}
-                contentStyle={styles.infoBox}
-              >
-                <Art name="clock" size={16 * HEADER_SCALE} />
-                <Text style={styles.clock}>{formatClock(elapsedMs)}</Text>
-              </PopSurface>
-            </View>
-
-            <View style={styles.headerGroup}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Pause"
-                hitSlop={10}
-                onPress={() => setOverlay('pause')}
-                style={styles.headerRoundButton}
-              >
-                <PopSurface
-                  fill={theme.colors.surface}
-                  radius={radii.md}
-                  elevation="card"
-                  contentStyle={styles.toolIconInner}
-                >
-                  <Art name="pause" size={24 * HEADER_SCALE} />
-                </PopSurface>
-              </Pressable>
-            </View>
-          </View>
+          <GameHeader
+            locked={locked}
+            total={total}
+            elapsedMs={elapsedMs}
+            highlightEdges={highlightEdges}
+            onBack={() => router.back()}
+            onHint={() => setOverlay('hint')}
+            onEdges={() => setHighlightEdges((on) => !on)}
+            onPreview={() => setOverlay('preview')}
+            onPause={() => setOverlay('pause')}
+          />
 
           {/* The board is square, so a shell taller than its own width plus the
               tray can only add dead cream margin — which is exactly what the
@@ -789,19 +722,6 @@ const useStyles = createThemedStyles((theme) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.backgrounds.game },
     safeArea: { flex: 1 },
-    // The back, edges, preview and pause art are bare glyphs with no ground of
-    // their own, so they need a surface behind them to read against the board's
-    // pale green. Scaled 1.2× for the UI pass; still compact enough that the
-    // seven header elements stay on one row.
-    headerRoundButton: {
-      width: 32 * HEADER_SCALE,
-      height: 32 * HEADER_SCALE,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderRadius: radii.pill,
-      backgroundColor: theme.colors.surface,
-      boxShadow: shadow.card,
-    },
     centered: {
       flex: 1,
       alignItems: 'center',
@@ -821,39 +741,6 @@ const useStyles = createThemedStyles((theme) =>
       // Wider than spacing.sm: the header, board and toolbar previously sat almost
       // flush, so the three read as one crowded block.
       gap: spacing.lg,
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: spacing.xs,
-    },
-    headerGroup: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-    },
-    pieceCount: {
-      ...typography.heading,
-      fontSize: 16 * HEADER_SCALE,
-      color: theme.colors.headingGreen,
-    },
-    // The count and timer share one box style so they read as a matching pair:
-    // same height, same internal padding, rounded pills, content centred with
-    // enough breathing room that the values never sit tight against the edges.
-    infoBox: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.xs * HEADER_SCALE,
-      paddingHorizontal: spacing.md * HEADER_SCALE,
-      paddingVertical: 6 * HEADER_SCALE,
-    },
-    clock: { ...typography.heading, fontSize: 16 * HEADER_SCALE, color: theme.colors.ink },
-    toolIconInner: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: spacing.xs * HEADER_SCALE,
     },
     // A cream tray under the board, matching the mockup: the board area is a
     // card, not an outlined box.
