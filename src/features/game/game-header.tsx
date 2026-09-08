@@ -13,7 +13,7 @@ import { formatClock } from './play-clock';
  * single line. Applied to button size, art, text and box padding; the gaps
  * between controls stay on the spacing scale so the row never crowds the board.
  */
-const HEADER_SCALE = 1.2;
+export const HEADER_SCALE = 1.2;
 
 /**
  * The count and timer boxes keep a fixed minimum width so their outer geometry
@@ -182,6 +182,7 @@ const useStyles = createThemedStyles((theme) =>
     // Row two: the four tool buttons grouped on the right under the boxes.
     headerRowEnd: {
       flexDirection: 'row',
+      flexWrap: 'nowrap',
       alignItems: 'center',
       justifyContent: 'flex-end',
       gap: spacing.xs,

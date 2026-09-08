@@ -1,9 +1,9 @@
 import { fireEvent, render, within } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
-import { radii } from '@/shared/theme';
+import { radii, spacing } from '@/shared/theme';
 
-import { GameHeader } from './game-header';
+import { GameHeader, HEADER_SCALE } from './game-header';
 
 /** `mm:ss` or `h:mm:ss` → milliseconds, mirroring `formatClock`. */
 function msFor(face: string): number {
@@ -127,6 +127,74 @@ describe('GameHeader layout', () => {
     const keys = collectStyleKeys(rendered);
     for (const key of forbiddenTransformKeys) {
       expect(keys.has(key)).toBe(false);
+    }
+  });
+});
+
+describe('GameHeader second-row group', () => {
+  it('keeps all four tools on one row, in order Hint, Edges, Preview, Pause', () => {
+    const { rendered } = renderHeader();
+    const tools = rendered.getByTestId('game-header-tools');
+
+    // The four buttons are direct children of the single tools container.
+    expect(tools.props.children).toHaveLength(4);
+
+    const labels = within(tools)
+      .getAllByRole('button')
+      .map((button) => ({
+        label: button.props.accessibilityLabel,
+        style: StyleSheet.flatten(button.props.style),
+      }));
+    expect(labels.map(({ label }) => label)).toEqual(['Hint', 'Edges', 'Preview', 'Pause']);
+  });
+
+  it('never wraps: a single horizontal row with one shared gap and no per-button margins', () => {
+    const { rendered } = renderHeader();
+    const tools = rendered.getByTestId('game-header-tools');
+    const row = StyleSheet.flatten(tools.props.style);
+
+    expect(row).toMatchObject({
+      flexDirection: 'row',
+      flexWrap: 'nowrap',
+      alignItems: 'center',
+    });
+    // Exactly the same spacing token for every gap in the group.
+    expect(row.gap).toBe(spacing.xs);
+
+    // No button adds margins of its own, so the parent gap is the one and only
+    // spacing source — the three gaps are identical by construction.
+    for (const label of ['Hint', 'Edges', 'Preview', 'Pause']) {
+      const style = StyleSheet.flatten(within(tools).getByLabelText(label).props.style) as Record<
+        string,
+        unknown
+      >;
+      for (const key of Object.keys(style)) {
+        expect(key.startsWith('margin')).toBe(false);
+      }
+    }
+  });
+
+  it('right-aligns the group under the count/timer boxes, away from the Back button', () => {
+    const { rendered } = renderHeader();
+    const tools = rendered.getByTestId('game-header-tools');
+    expect(StyleSheet.flatten(tools.props.style).justifyContent).toBe('flex-end');
+    expect(within(tools).queryByLabelText('Back')).toBeNull();
+  });
+
+  it('keeps every control at the 1.2× size', () => {
+    const { rendered } = renderHeader();
+    const lockable = StyleSheet.flatten(rendered.getByText('0/784').props.style);
+    const clock = StyleSheet.flatten(rendered.getByText('00:21').props.style);
+    expect(lockable.fontSize).toBe(16 * HEADER_SCALE);
+    expect(clock.fontSize).toBe(16 * HEADER_SCALE);
+
+    const tools = rendered.getByTestId('game-header-tools');
+    for (const label of ['Back', 'Hint', 'Edges', 'Preview', 'Pause']) {
+      const button = StyleSheet.flatten(
+        (label === 'Back' ? rendered : within(tools)).getByLabelText(label).props.style,
+      );
+      expect(button.width).toBe(32 * HEADER_SCALE);
+      expect(button.height).toBe(32 * HEADER_SCALE);
     }
   });
 });
