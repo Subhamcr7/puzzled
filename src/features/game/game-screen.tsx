@@ -738,9 +738,10 @@ const useStyles = createThemedStyles((theme) =>
       alignSelf: 'center',
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.md,
-      // Wider than spacing.sm: the header, board and toolbar previously sat almost
-      // flush, so the three read as one crowded block.
-      gap: spacing.lg,
+      // Tight enough that the tool tray sits immediately above the board — the
+      // header's own row rhythm is spacing.sm, so the band between the controls
+      // and the board reads as part of the header, not as empty space.
+      gap: spacing.sm,
     },
     // A cream tray under the board, matching the mockup: the board area is a
     // card, not an outlined box.

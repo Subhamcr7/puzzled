@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 
 import { radii, spacing } from '@/shared/theme';
 
-import { GameHeader, HEADER_SCALE } from './game-header';
+import { GameHeader, HEADER_SCALE, INFO_BOX_MIN_W } from './game-header';
 
 /** `mm:ss` or `h:mm:ss` → milliseconds, mirroring `formatClock`. */
 function msFor(face: string): number {
@@ -106,6 +106,25 @@ describe('GameHeader layout', () => {
     }
     // Back lives only on the top row.
     expect(within(tools).queryByLabelText('Back')).toBeNull();
+  });
+
+  it('sits inside one shared rounded tray, right-aligned under the boxes', () => {
+    const { rendered } = renderHeader();
+    const tray = StyleSheet.flatten(rendered.getByTestId('tool-tray').props.style);
+
+    // One rounded cream surface with a card shadow, hugging the right edge so
+    // the group lands directly below the count/timer pair, not the Back button.
+    expect(tray).toMatchObject({
+      borderRadius: radii.lg,
+      alignSelf: 'flex-end',
+    });
+    expect(tray.backgroundColor).toBeTruthy();
+    expect(tray.boxShadow).toBeTruthy();
+
+    // The four tools live inside the tray, on the shared row.
+    const tools = rendered.getByTestId('game-header-tools');
+    expect(within(rendered.getByTestId('tool-tray')).getByTestId('game-header-tools')).toBeTruthy();
+    expect(tools.props.children).toHaveLength(4);
   });
 
   it('wires every control to its action', () => {
@@ -240,6 +259,15 @@ describe('GameHeader timer-box geometry', () => {
     );
     expect(zero.minWidth).toBeGreaterThan(0);
     expect(JSON.stringify(max)).toBe(JSON.stringify(zero));
+  });
+
+  it('gives the count and timer one identical shared outer width', () => {
+    const { rendered } = renderHeader();
+    const countFace = StyleSheet.flatten(rendered.getByTestId('count-box-face').props.style);
+    const timerFace = StyleSheet.flatten(rendered.getByTestId('timer-box-face').props.style);
+    expect(countFace.minWidth).toBe(INFO_BOX_MIN_W);
+    expect(timerFace.minWidth).toBe(INFO_BOX_MIN_W);
+    expect(timerFace.minWidth).toBe(countFace.minWidth);
   });
 
   it('keeps the count and timer boxes centred text slots (no jitter inside the pill)', () => {
