@@ -778,7 +778,6 @@ const useStyles = createThemedStyles((theme) =>
       width: '100%',
       maxWidth: 900,
       alignSelf: 'center',
-      alignItems: 'flex-end',
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.md,
       gap: spacing.sm,
