@@ -1,8 +1,9 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Image as RNImage, StyleSheet, View } from 'react-native';
+import { Image as RNImage, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { type ArtName } from '@/shared/art';
 import {
   coinsForCompletion,
   getCompletionsRepository,
@@ -34,7 +35,7 @@ import { Art, PopButton, PopSheet, PopSurface, PopToggle, Text, ThemeGround } fr
 
 import { setMusicEnabled, setSfxEnabled } from './board-audio';
 import { FX, setHapticsEnabled } from './board-fx';
-import { GameHeader } from './game-header';
+import { GameHeader, HEADER_SCALE } from './game-header';
 import { boardTrayReserve, PuzzleBoard } from './puzzle-board';
 import { BOARD_FRAME_PAD } from './tray-geometry';
 
@@ -564,6 +565,18 @@ export function GameScreen({ puzzleId, initialGridSize }: GameScreenProps) {
   const locked = countLockedPieces(session);
   const total = expectedPieceCount(gridSize);
 
+  const toolControls: { art: ArtName; label: string; active?: boolean; onPress: () => void }[] = [
+    { art: 'bulb', label: 'Hint', onPress: () => setOverlay('hint') },
+    {
+      art: 'edges',
+      label: 'Edges',
+      active: highlightEdges,
+      onPress: () => setHighlightEdges((on) => !on),
+    },
+    { art: 'eye', label: 'Preview', onPress: () => setOverlay('preview') },
+    { art: 'pause', label: 'Pause', onPress: () => setOverlay('pause') },
+  ];
+
   return (
     <View style={styles.screen}>
       <ThemeGround />
@@ -573,13 +586,42 @@ export function GameScreen({ puzzleId, initialGridSize }: GameScreenProps) {
             locked={locked}
             total={total}
             elapsedMs={elapsedMs}
-            highlightEdges={highlightEdges}
             onBack={() => router.back()}
-            onHint={() => setOverlay('hint')}
-            onEdges={() => setHighlightEdges((on) => !on)}
-            onPreview={() => setOverlay('preview')}
-            onPause={() => setOverlay('pause')}
           />
+
+          {/* Tool tray: four round control buttons in one shared rounded box,
+              right-aligned to sit directly above the puzzle board. */}
+          <PopSurface
+            fill={theme.colors.surface}
+            radius={radii.lg}
+            elevation="card"
+            style={styles.toolTray}
+            contentStyle={styles.toolTrayContent}
+            testID="tool-tray"
+          >
+            <View style={styles.toolTrayRow} testID="game-header-tools">
+              {toolControls.map((ctrl) => (
+                <Pressable
+                  key={ctrl.label}
+                  accessibilityRole="button"
+                  accessibilityLabel={ctrl.label}
+                  accessibilityState={{ selected: ctrl.active }}
+                  hitSlop={10}
+                  onPress={ctrl.onPress}
+                  style={styles.toolRoundButton}
+                >
+                  <PopSurface
+                    fill={ctrl.active ? theme.colors.honey : theme.colors.surface}
+                    radius={radii.md}
+                    elevation="card"
+                    contentStyle={styles.toolIconInner}
+                  >
+                    <Art name={ctrl.art} size={24 * HEADER_SCALE} />
+                  </PopSurface>
+                </Pressable>
+              ))}
+            </View>
+          </PopSurface>
 
           {/* The board is square, so a shell taller than its own width plus the
               tray can only add dead cream margin — which is exactly what the
@@ -736,42 +778,20 @@ const useStyles = createThemedStyles((theme) =>
       width: '100%',
       maxWidth: 900,
       alignSelf: 'center',
+      alignItems: 'flex-end',
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.md,
-      // Tight enough that the tool tray sits immediately above the board — the
-      // header's own row rhythm is spacing.sm, so the band between the controls
-      // and the board reads as part of the header, not as empty space.
       gap: spacing.sm,
     },
     // A cream tray under the board, matching the mockup: the board area is a
     // card, not an outlined box.
     boardShell: {
-      flex: 1,
       minHeight: 220,
       overflow: 'hidden',
       borderRadius: radii.lg,
       backgroundColor: theme.colors.surface,
       boxShadow: shadow.card,
-      /**
-       * The uniform frame between the rounded shell edge and the mat/tray block.
-       * The canvas measures the padded inner box, so the board, shelf, scrollbar
-       * and every gesture inherit it — one value for every grid, no per-size
-       * layouts. Keeps the board's corners clear of the shell's rounded corners
-       * instead of crowding them (worst on the dense grids).
-       */
       padding: BOARD_FRAME_PAD,
-      /**
-       * Absorbs the leftover column height above the board rather than below the
-       * toolbar.
-       *
-       * `maxHeight` caps how far `flex: 1` can grow (the board is square, so a taller
-       * shell is only dead margin), and the slack that cap leaves used to collect
-       * after the last child — stranding the toolbar in mid-screen with empty space
-       * beneath it. An auto top margin claims that slack instead, which drops the
-       * board/tray/toolbar block down the screen and seats the toolbar on the bottom
-       * edge in one move.
-       */
-      marginTop: 'auto',
     },
     sheetBody: { gap: spacing.md },
     pauseRows: { gap: spacing.sm },
@@ -791,5 +811,33 @@ const useStyles = createThemedStyles((theme) =>
       overflow: 'hidden',
     },
     previewImage: { width: '100%', height: '100%' },
+    // Tool tray: shared rounded box holding the four control buttons,
+    // right-aligned to sit directly above the puzzle board.
+    toolTray: {
+      alignSelf: 'flex-end',
+    },
+    toolTrayContent: {
+      padding: spacing.sm,
+    },
+    toolTrayRow: {
+      flexDirection: 'row',
+      flexWrap: 'nowrap',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    toolRoundButton: {
+      width: 32 * HEADER_SCALE,
+      height: 32 * HEADER_SCALE,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: radii.pill,
+      backgroundColor: theme.colors.surface,
+      boxShadow: shadow.card,
+    },
+    toolIconInner: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: spacing.xs * HEADER_SCALE,
+    },
   }),
 );

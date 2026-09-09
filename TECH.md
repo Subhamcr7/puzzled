@@ -275,6 +275,13 @@ Initial budgets:
 - Gesture selection, drag, z-order, snapping, and locked-piece rendering.
 - Timer, pause/resume, background saves, accessibility alternatives, and device profiling.
 
+The game screen's chrome follows a compact layout: a two-part header (Back on the left, count +
+timer pills on the right) plus the four tool controls (Hint, Edges, Preview, Pause) in one shared
+rounded tray. The tray is right-aligned to the board shell and sits directly above it — the board is
+the alignment reference, not the screen width. The count and timer pills share one fixed width
+(`INFO_BOX_MIN_W` in `game-header.tsx`) so identical geometry is independent of the rendered clock
+or piece count, and their horizontal padding is deliberately small so the pills hug their content.
+
 ### 4. Local product experience
 
 - Curated image assets and thumbnails.

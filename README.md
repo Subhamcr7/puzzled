@@ -274,11 +274,13 @@ npm test
 
 1. Home shows **First Light** (4×4 starter, 16 pieces — easy to judge snap feel) with your placed count
 2. Start puzzle → shuffled pieces sit in a tray under the board, each a distinct jigsaw shape
-3. Drag a piece; it lifts with an accent stroke
-4. Drop near the correct cell → it snaps and locks
-5. Counter updates; status flips to completed when all pieces lock
-6. Leave and reopen → the board is exactly where you left it
-7. **Reset** in the header reshuffles and clears saved progress for that puzzle
+3. The four tool controls (**Hint, Edges, Preview, Pause**) sit in one shared rounded box directly
+   above the board's right edge, with compact count + timer pills on the header row
+4. Drag a piece; it lifts with an accent stroke
+5. Drop near the correct cell → it snaps and locks
+6. Counter updates; status flips to completed when all pieces lock
+7. Leave and reopen → the board is exactly where you left it
+8. **Restart** in the pause sheet reshuffles and clears saved progress for that puzzle
 
 Production boards stay 8×8 / 9×9 / 10×10 — bump `gridSize` on the catalog entry when you want denser
 play.
