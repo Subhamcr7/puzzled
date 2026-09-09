@@ -139,6 +139,16 @@ describe('GameHeader timer-box geometry', () => {
     expect(timerFace.minWidth).toBe(countFace.minWidth);
   });
 
+  it('keeps the count and timer pills compact with small balanced horizontal padding', () => {
+    const { rendered } = renderHeader();
+    const countFace = StyleSheet.flatten(rendered.getByTestId('count-box-face').props.style);
+    const timerFace = StyleSheet.flatten(rendered.getByTestId('timer-box-face').props.style);
+    // Compact: horizontal padding strictly below the older spacing.sm (8dp) per
+    // side, and identical for both pills so the pair stays a matching set.
+    expect(countFace.paddingHorizontal).toBeLessThan(8);
+    expect(countFace.paddingHorizontal).toBe(timerFace.paddingHorizontal);
+  });
+
   it('keeps the count and timer boxes centred text slots (no jitter inside the pill)', () => {
     const { rendered } = renderHeader();
     const countText = StyleSheet.flatten(rendered.getByText('0/784').props.style);

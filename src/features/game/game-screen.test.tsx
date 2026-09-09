@@ -98,6 +98,23 @@ describe('GameScreen layout after the header redesign (regression)', () => {
     expect(within(shell).getByTestId('puzzle-board')).toBeTruthy();
   });
 
+  it('spans the tool tray full board width and spreads the four tools evenly', async () => {
+    const rendered = await renderLoadedScreen();
+
+    // The tray wrapper stretches to the play-area column — i.e. the same width
+    // as the board shell — instead of floating as a narrow right-aligned pill.
+    expect(
+      StyleSheet.flatten(rendered.getByTestId('tool-tray').props.style),
+    ).toMatchObject({ alignSelf: 'stretch' });
+
+    // The four tools sit in one row, spread evenly across the bar.
+    const row = rendered.getByTestId('game-header-tools');
+    expect(StyleSheet.flatten(row.props.style)).toMatchObject({
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    });
+  });
+
   it("keeps the board shell claiming the leftover column height (flex: 1) — the board's own viewport collapses without it", async () => {
     const rendered = await renderLoadedScreen();
     const shell = rendered.getByTestId('board-shell');
