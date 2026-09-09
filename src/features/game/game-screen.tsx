@@ -35,7 +35,7 @@ import { Art, PopButton, PopSheet, PopSurface, PopToggle, Text, ThemeGround } fr
 
 import { setMusicEnabled, setSfxEnabled } from './board-audio';
 import { FX, setHapticsEnabled } from './board-fx';
-import { GameHeader, HEADER_SCALE } from './game-header';
+import { GameHeader, HEADER_SCALE, INFO_BOX_GAP, INFO_BOX_MIN_W } from './game-header';
 import { boardTrayReserve, PuzzleBoard } from './puzzle-board';
 import { BOARD_FRAME_PAD } from './tray-geometry';
 
@@ -590,12 +590,14 @@ export function GameScreen({ puzzleId, initialGridSize }: GameScreenProps) {
           />
 
           {/* Tool tray: four round control buttons in one shared rounded box,
-              right-aligned to sit directly above the puzzle board. */}
+              right-aligned to sit directly above the puzzle board. Its outer
+              width matches the combined count + timer width so the two rows
+              share the same horizontal bounds. */}
           <PopSurface
             fill={theme.colors.surface}
             radius={radii.lg}
             elevation="card"
-            style={styles.toolTray}
+            style={[styles.toolTray, { width: INFO_BOX_MIN_W * 2 + INFO_BOX_GAP }]}
             contentStyle={styles.toolTrayContent}
             testID="tool-tray"
           >
@@ -823,7 +825,7 @@ const useStyles = createThemedStyles((theme) =>
     },
     previewImage: { width: '100%', height: '100%' },
     // Tool tray: shared rounded box holding the four control buttons,
-    // right-aligned to sit directly above the puzzle board.
+    // right-aligned and width-matched to the combined count + timer pills.
     toolTray: {
       alignSelf: 'flex-end',
     },
@@ -834,7 +836,7 @@ const useStyles = createThemedStyles((theme) =>
       flexDirection: 'row',
       flexWrap: 'nowrap',
       alignItems: 'center',
-      gap: spacing.xs,
+      justifyContent: 'space-between',
     },
     toolRoundButton: {
       width: 32 * HEADER_SCALE,

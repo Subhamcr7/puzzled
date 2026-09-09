@@ -1,6 +1,7 @@
 import { render, within } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
+import { INFO_BOX_GAP, INFO_BOX_MIN_W } from './game-header';
 import { GameScreen } from './game-screen';
 
 const mockPuzzle = {
@@ -110,6 +111,23 @@ describe('GameScreen layout after the header redesign (regression)', () => {
       flex: 1,
       minHeight: 220,
       overflow: 'hidden',
+    });
+  });
+
+  it('sizes the tool tray to match the combined count + timer width and right-aligns it', async () => {
+    const rendered = await renderLoadedScreen();
+    const tray = rendered.getByTestId('tool-tray');
+    const flatStyle = StyleSheet.flatten(tray.props.style);
+    expect(flatStyle.alignSelf).toBe('flex-end');
+    expect(flatStyle.width).toBe(INFO_BOX_MIN_W * 2 + INFO_BOX_GAP);
+  });
+
+  it('spreads the four tools evenly across the tray', async () => {
+    const rendered = await renderLoadedScreen();
+    const row = rendered.getByTestId('game-header-tools');
+    expect(StyleSheet.flatten(row.props.style)).toMatchObject({
+      flexDirection: 'row',
+      justifyContent: 'space-between',
     });
   });
 });

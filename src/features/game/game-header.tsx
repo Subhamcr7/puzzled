@@ -28,16 +28,19 @@ export const HEADER_SCALE = 1.2;
  * the box shape from the changing text entirely.
  *
  * `INFO_BOX_MIN_W` matches the pill's natural width for an `mm:ss` value at the
- * current 1.2× scale (measured ≈ 138dp on the ci-30 debug build with the older
- * wider padding), with a few points of margin for the widest digit set. The
- * compact padding (`spacing.sm * HEADER_SCALE` per side) lowers the content
- * footprint, so the shared width comes down from 144 to 120 — tight, but still
- * a touch larger than the widest content (`⏱ 10:00` ≈ 100dp) so the box never
- * re-measures or clips as the clock and count change. The count and timer
- * share the value so the pair renders as two identical pills; the count's
- * longest string (`784/784`) also sits well inside it.
+ * current 1.2× scale, with a few points of margin for the widest digit set. The
+ * timer's full content (`⏱ 10:00` ≈ 87–92dp at 1.2×) is the widest the pair
+ * must fit; with balanced horizontal padding (≈ 4.8dp per side) the shared width
+ * settles at 104dp — visibly tighter than the older 120dp, but still a touch
+ * larger than the widest content so the box never re-measures or clips as the
+ * clock and count change. The count and timer share the value so the pair
+ * renders as two identical pills; the count's longest string (`784/784`) also
+ * sits well inside it.
  */
-export const INFO_BOX_MIN_W = 120;
+export const INFO_BOX_MIN_W = 104;
+
+/** Horizontal gap between the two pills inside `headerGroup`. */
+export const INFO_BOX_GAP = spacing.xs;
 
 interface GameHeaderProps {
   /** Pieces already locked on the board. */
@@ -145,7 +148,7 @@ const useStyles = createThemedStyles((theme) =>
     headerGroup: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.xs,
+      gap: INFO_BOX_GAP,
     },
     // The back button needs a surface behind it to read against the board's pale
     // green. Scaled 1.2× for the UI pass.
@@ -169,13 +172,13 @@ const useStyles = createThemedStyles((theme) =>
     },
     // The count and timer share one box style so they read as a matching pair:
     // same height, same internal padding, rounded pills, content centred with
-    // enough breathing room that the values never sit tight against the edges.
+    // balanced horizontal breathing room (compact — not a wide empty pill).
     infoBox: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       gap: spacing.xs * HEADER_SCALE,
-      paddingHorizontal: spacing.sm * HEADER_SCALE,
+      paddingHorizontal: spacing.xs * HEADER_SCALE,
       paddingVertical: 6 * HEADER_SCALE,
     },
     // Both pills share the one fixed minimum width, so their outer geometry is
