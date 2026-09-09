@@ -628,6 +628,7 @@ export function GameScreen({ puzzleId, initialGridSize }: GameScreenProps) {
               wide gap above and below the board was. Measuring the width and
               capping the height removes it without guessing an aspect ratio. */}
           <View
+            testID="board-shell"
             style={[
               styles.boardShell,
               shellWidth > 0 && { maxHeight: shellWidth + boardTrayReserve(gridSize) },
@@ -784,7 +785,18 @@ const useStyles = createThemedStyles((theme) =>
     },
     // A cream tray under the board, matching the mockup: the board area is a
     // card, not an outlined box.
+    //
+    // `flex: 1` is what makes the board appear at all: the canvas inside
+    // measures its own viewport, so the shell must claim the leftover column
+    // height *before* that measurement happens. Without it the shell sizes
+    // itself from its content, the canvas first-measures against `minHeight`
+    // (220) and the board fit (`vh - trayH - TRAY_GAP`) degenerates to ~1px —
+    // board, tray and scrollbar all collapse out of view while the header rows
+    // above stay put. `maxHeight` then caps the flex growth to the square
+    // board + tray footprint, so the shell never grows a dead cream band
+    // below the tray (see docs/SESSION-2026-09-05.md §13).
     boardShell: {
+      flex: 1,
       minHeight: 220,
       overflow: 'hidden',
       borderRadius: radii.lg,
