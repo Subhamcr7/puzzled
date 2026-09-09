@@ -822,13 +822,10 @@ const useStyles = createThemedStyles((theme) =>
       overflow: 'hidden',
     },
     previewImage: { width: '100%', height: '100%' },
-    // Tool tray: one shared rounded box holding the four control buttons,
-    // spanning the full play-area width (same horizontal bounds as the board
-    // shell). `alignSelf: 'stretch'` makes it match the board's width instead
-    // of shrinking to a right-floated pill; `space-between` spreads Hint,
-    // Edges, Preview and Pause evenly across that bar.
+    // Tool tray: shared rounded box holding the four control buttons,
+    // right-aligned to sit directly above the puzzle board.
     toolTray: {
-      alignSelf: 'stretch',
+      alignSelf: 'flex-end',
     },
     toolTrayContent: {
       padding: spacing.sm,
@@ -837,7 +834,7 @@ const useStyles = createThemedStyles((theme) =>
       flexDirection: 'row',
       flexWrap: 'nowrap',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      gap: spacing.xs,
     },
     toolRoundButton: {
       width: 32 * HEADER_SCALE,
