@@ -274,7 +274,7 @@ export function HomeScreen() {
             onPress={() => router.push('/settings')}
             style={styles.gearButton}
           >
-            <Art name="gear" size={26} />
+            <Art name="gear" size={31} />
           </Pressable>
         </View>
 
