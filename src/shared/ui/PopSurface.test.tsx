@@ -58,4 +58,14 @@ describe('PopSurface', () => {
       borderRadius: radii.md,
     });
   });
+
+  // The clip cuts a glyph's descender as readily as a photo's corner, so surfaces
+  // whose children are text opt out — `PopTabBar` and Home's quick link both do.
+  // The radius must survive the opt-out, or those faces lose their corners.
+  it('drops the clip when asked, keeping the radius', () => {
+    const { getByTestId } = render(<PopSurface testID="surface" radius={radii.md} clip={false} />);
+    const face = StyleSheet.flatten(getByTestId('surface-face').props.style);
+    expect(face).not.toHaveProperty('overflow');
+    expect(face.borderRadius).toBe(radii.md);
+  });
 });

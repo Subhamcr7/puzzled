@@ -39,6 +39,20 @@ export const colors = {
   /** Secondary green, for selected states that must not read as the CTA. */
   leaf: '#80C755',
 
+  /**
+   * Home's Play button, drawn as a radial gradient: `limeLight` at the highlight,
+   * through `lime`, out to `limeDeep` at the rim.
+   *
+   * These are deliberately brighter than `grassDeep` — bright enough that a white
+   * label would measure about 2:1 and be unreadable in sunlight. They therefore
+   * carry `ink`, which lands at 8.8 / 7.2 / 3.7 across the three stops. That is the
+   * trade this lime requires: white text on green caps out around `grassDeep`, so
+   * a genuinely lime button and a white label cannot both exist at AA.
+   */
+  limeLight: '#A6E22E',
+  lime: '#8CCF1B',
+  limeDeep: '#5E9310',
+
   sky: '#50ADE9',
 
   /**
@@ -186,6 +200,23 @@ export const springs = {
 } as const;
 
 /**
+ * How a held face darkens.
+ *
+ * Presses used to be conveyed by geometry alone — `PopButton` shrank 4% and sank
+ * 2pt, and nothing else in the app reacted at all. On a bright fill that reads as
+ * the button wobbling rather than being pressed, so a tint now carries the state
+ * and the geometry merely supports it.
+ *
+ * The tint is `ink`, not black: the same reasoning as the shadows, which are warm
+ * brown so they tint the cream surfaces instead of greying them.
+ */
+export const pressState = {
+  tint: colors.ink,
+  /** Tint opacity at full press. */
+  opacity: 0.26,
+} as const;
+
+/**
  * Durations, in ms, for the motion that is not a spring.
  *
  * Springs cover anything responding to a touch; these cover the timed motion —
@@ -206,7 +237,7 @@ export const motion = {
    *
    * Fonts often resolve in well under 100ms from cache, and without a floor the
    * loading screen appears for two frames — which reads as a glitch rather than
-   * as a greeting. Long enough for one bob of the bear.
+   * as a greeting. Long enough for a full beat of the loading dots.
    */
   loaderMinimum: 1100,
 } as const;

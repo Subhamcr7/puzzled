@@ -17,6 +17,15 @@ interface PopSurfaceProps {
   style?: StyleProp<ViewStyle>;
   /** Style for the face — use for padding, alignment. */
   contentStyle?: StyleProp<ViewStyle>;
+  /**
+   * Whether the face clips its children to the radius. On by default, because
+   * nested photos have to follow the corner.
+   *
+   * Turn it **off** on a surface whose children are text. The clip cuts a glyph's
+   * descender as readily as a photo's corner, and a `y` without its tail reads as
+   * a missing letter — which is what put "Librar" in the tab bar.
+   */
+  clip?: boolean;
   testID?: string;
 }
 
@@ -28,9 +37,9 @@ interface PopSurfaceProps {
  * platforms, so the shadow no longer occupies layout space — which is why this
  * component no longer pads its wrapper.
  *
- * The shadow and the fill live on the wrapper while `overflow: hidden` lives on
- * the inner face. Putting both on one node risks the clip eating the shadow,
- * and costs nothing to separate.
+ * The shadow and the fill live on the wrapper while the clip lives on the inner
+ * face. Putting both on one node risks the clip eating the shadow, and costs
+ * nothing to separate. The clip itself is opt-out — see `clip`.
  */
 export function PopSurface({
   children,
@@ -39,6 +48,7 @@ export function PopSurface({
   elevation = 'card',
   style,
   contentStyle,
+  clip = true,
   testID,
 }: PopSurfaceProps) {
   const theme = useTheme();
@@ -58,7 +68,7 @@ export function PopSurface({
     >
       <View
         testID={testID ? `${testID}-face` : undefined}
-        style={[styles.face, { borderRadius: radius }, contentStyle]}
+        style={[clip && styles.clipped, { borderRadius: radius }, contentStyle]}
       >
         {children}
       </View>
@@ -67,5 +77,5 @@ export function PopSurface({
 }
 
 const styles = StyleSheet.create({
-  face: { overflow: 'hidden' },
+  clipped: { overflow: 'hidden' },
 });

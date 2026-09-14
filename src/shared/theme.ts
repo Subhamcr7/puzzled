@@ -6,6 +6,7 @@ export {
   backgrounds,
   border,
   motion,
+  pressState,
   radii,
   shadow,
   spacing,
