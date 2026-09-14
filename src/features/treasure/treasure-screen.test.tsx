@@ -76,9 +76,12 @@ function completionOn(day: string) {
 }
 
 function dayKey(offset: number): string {
+  // Local time, matching `dateKey`/`streakFrom` in the app: the trail rolls over
+  // at the player's midnight, and a UTC-derived key drifts a day off ours the
+  // moment local and UTC disagree about "today".
   const date = new Date();
   date.setDate(date.getDate() + offset);
-  return date.toISOString().slice(0, 10);
+  return dateKey(date);
 }
 
 async function renderHunt(
