@@ -6,6 +6,11 @@ import { type PuzzleProgressSummary } from '@/data';
 import { pickerGeometry, offsetForIndex } from './picker-geometry';
 import { PiecePicker } from './piece-picker';
 
+const mockPlayUiTap = jest.fn();
+jest.mock('@/shared/ui/ui-sound', () => ({
+  playUiTap: (...args: unknown[]) => mockPlayUiTap(...args),
+}));
+
 function summary(overrides: Partial<PuzzleProgressSummary> = {}): PuzzleProgressSummary {
   return {
     puzzleId: 'first-light',
@@ -92,5 +97,23 @@ describe('PiecePicker', () => {
     expect(getByLabelText('16 pieces, Easy, 12 of 16 already placed')).toBeTruthy();
     // ...and the visible pill sits under the centred size.
     expect(getByText('12/16')).toBeTruthy();
+  });
+
+  it('plays one tap sound when a size is selected on tap', () => {
+    mockPlayUiTap.mockClear();
+    const { getByLabelText } = renderPicker({ onSelect: jest.fn() });
+    fireEvent.press(getByLabelText('25 pieces, Medium'));
+    expect(mockPlayUiTap).toHaveBeenCalledTimes(1);
+  });
+
+  it('plays no sound when the strip scrolls', () => {
+    mockPlayUiTap.mockClear();
+    const rendered = renderPicker({ onSelect: jest.fn() });
+    const strip = rendered.getByTestId('piece-picker');
+    fireEvent(strip, 'layout', { nativeEvent: { layout: { width: 393, height: 140 } } });
+    fireEvent(strip, 'scroll', {
+      nativeEvent: { contentOffset: { x: offsetForIndex(1, pickerGeometry(393)) } },
+    });
+    expect(mockPlayUiTap).not.toHaveBeenCalled();
   });
 });

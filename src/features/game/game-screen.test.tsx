@@ -1,8 +1,13 @@
-import { render, within } from '@testing-library/react-native';
+import { fireEvent, render, within } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
 import { INFO_BOX_GAP, INFO_BOX_MIN_W } from './game-header';
 import { GameScreen } from './game-screen';
+
+const mockPlayUiTap = jest.fn();
+jest.mock('@/shared/ui/ui-sound', () => ({
+  playUiTap: (...args: unknown[]) => mockPlayUiTap(...args),
+}));
 
 const mockPuzzle = {
   id: 'first-light',
@@ -129,5 +134,19 @@ describe('GameScreen layout after the header redesign (regression)', () => {
       flexDirection: 'row',
       justifyContent: 'space-between',
     });
+  });
+});
+
+describe('GameScreen tool-tray tap sounds', () => {
+  it('plays exactly one tap sound per tool press', async () => {
+    mockPlayUiTap.mockClear();
+    const rendered = await renderLoadedScreen();
+    const tray = rendered.getByTestId('tool-tray');
+
+    fireEvent.press(within(tray).getByLabelText('Hint'));
+    expect(mockPlayUiTap).toHaveBeenCalledTimes(1);
+
+    fireEvent.press(within(tray).getByLabelText('Pause'));
+    expect(mockPlayUiTap).toHaveBeenCalledTimes(2);
   });
 });

@@ -14,6 +14,7 @@ import { useTheme } from '@/shared/theme-context';
 import { createThemedStyles } from '@/shared/themed-styles';
 import { type ArtName } from '@/shared/art';
 import { Art, PopIcon, PopSurface, Text, useTabBarSpace, ThemeGround } from '@/shared/ui';
+import { playUiTap } from '@/shared/ui/ui-sound';
 
 /**
  * There is no accounts system yet (Phase 2). Every player is shown the same
@@ -106,7 +107,14 @@ export function ProfileScreen() {
 
             <View style={styles.links}>
               {links.map((link) => (
-                <Pressable key={link.label} accessibilityRole="button" onPress={link.onPress}>
+                <Pressable
+                  key={link.label}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    playUiTap();
+                    link.onPress();
+                  }}
+                >
                   <PopSurface fill={theme.colors.surface} radius={radii.md}>
                     <View style={styles.linkRow}>
                       <Art name={link.art} size={28} />

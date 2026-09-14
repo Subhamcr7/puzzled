@@ -41,6 +41,7 @@ import {
   useTabBarSpace,
   ThemeGround,
 } from '@/shared/ui';
+import { playUiTap } from '@/shared/ui/ui-sound';
 
 type Tab = 'progress' | 'completed' | 'favourites' | 'photos';
 
@@ -319,7 +320,10 @@ export function LibraryScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Add a puzzle from your gallery"
-            onPress={onImport}
+            onPress={() => {
+              playUiTap();
+              onImport();
+            }}
             disabled={importing}
             style={styles.addButton}
           >
@@ -426,7 +430,10 @@ function LibraryRow({
           accessibilityRole="button"
           accessibilityLabel={title}
           style={styles.rowMain}
-          onPress={() => router.push(href)}
+          onPress={() => {
+            playUiTap();
+            router.push(href);
+          }}
         >
           <View style={styles.thumb}>
             {source != null ? (
@@ -472,7 +479,10 @@ function LibraryRow({
             accessibilityLabel={`Delete ${title}`}
             accessibilityHint="Also deletes any progress on this puzzle"
             hitSlop={10}
-            onPress={() => onDelete(puzzleId, title, isFavourite)}
+            onPress={() => {
+              playUiTap();
+              onDelete(puzzleId, title, isFavourite);
+            }}
             style={styles.deleteButton}
           >
             <PopIcon name="trash" size={20} color={theme.colors.inkMuted} />
@@ -485,7 +495,10 @@ function LibraryRow({
           }
           accessibilityState={{ selected: isFavourite }}
           hitSlop={10}
-          onPress={() => onToggleFavourite(puzzleId)}
+          onPress={() => {
+            playUiTap();
+            onToggleFavourite(puzzleId);
+          }}
           style={styles.heartButton}
         >
           <PopIcon

@@ -32,6 +32,7 @@ import { radii, shadow, spacing, typography } from '@/shared/theme';
 import { useTheme } from '@/shared/theme-context';
 import { createThemedStyles } from '@/shared/themed-styles';
 import { Art, PopButton, PopSheet, PopSurface, PopToggle, Text, ThemeGround } from '@/shared/ui';
+import { playUiTap } from '@/shared/ui/ui-sound';
 
 import { setMusicEnabled, setSfxEnabled } from './board-audio';
 import { FX, setHapticsEnabled } from './board-fx';
@@ -609,7 +610,10 @@ export function GameScreen({ puzzleId, initialGridSize }: GameScreenProps) {
                   accessibilityLabel={ctrl.label}
                   accessibilityState={{ selected: ctrl.active }}
                   hitSlop={10}
-                  onPress={ctrl.onPress}
+                  onPress={() => {
+                    playUiTap();
+                    ctrl.onPress();
+                  }}
                   style={styles.toolRoundButton}
                 >
                   <PopSurface

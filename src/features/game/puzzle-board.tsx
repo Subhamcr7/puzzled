@@ -1408,7 +1408,7 @@ export function PuzzleBoard({
         dropPiece({ ...common, position: clampedPosition, snapThreshold: placeThreshold }),
       );
       impact('medium');
-      playSfx('snap');
+      playSfx('place');
       flashId.current += 1;
       // The glow ring is drawn at the Canvas root (outside the camera group,
       // so it stays on top of the tray/floating piece), so its position must

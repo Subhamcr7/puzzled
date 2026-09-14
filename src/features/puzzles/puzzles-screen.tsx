@@ -14,6 +14,7 @@ import { type PuzzleDefinition } from '@/game-engine';
 import { radii, spacing, typography } from '@/shared/theme';
 import { createThemedStyles } from '@/shared/themed-styles';
 import { Art, Text, ThemeGround, useTabBarSpace } from '@/shared/ui';
+import { playUiTap } from '@/shared/ui/ui-sound';
 
 import { PuzzleTile } from './puzzle-tile';
 import { tileBadge } from './tile-progress';
@@ -99,7 +100,10 @@ export function PuzzlesScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`${data.coins ?? 'Unknown'} coins. Get more.`}
-                onPress={() => router.push('/coins')}
+                onPress={() => {
+                  playUiTap();
+                  router.push('/coins');
+                }}
                 style={styles.coinPill}
               >
                 <Art name="coin" size={26} />

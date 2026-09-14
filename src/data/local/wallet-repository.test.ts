@@ -1,10 +1,36 @@
+import { emitCoinGained } from '@/data/local/coin-events';
+
 import {
   coinsForCompletion,
   DAILY_BONUS,
   dailyBonusFor,
   STARTER_GRANT,
   sumLedger,
+  SQLiteWalletRepository,
 } from './wallet-repository';
+
+// `emitCoinGained` is what the wallet announces its credits on — the audio
+// manager subscribes through `onCoinGained`. Stubbing the emitter here (not
+// the repository) keeps the class's real "credit → exactly one event" contract
+// under test without touching SQLite.
+jest.mock('@/data/local/coin-events', () => ({
+  emitCoinGained: jest.fn(),
+  onCoinGained: jest.fn(),
+}));
+
+/** A stand-in SQLite handle covering every call `SQLiteWalletRepository` makes. */
+function fakeDatabase() {
+  return {
+    execAsync: jest.fn(async () => {}),
+    runAsync: jest.fn(async () => {}),
+    getFirstAsync: jest.fn(async () => null),
+    getAllAsync: jest.fn(async () => []),
+  };
+}
+
+function wallet(fake = fakeDatabase()) {
+  return { repository: new SQLiteWalletRepository(fake as never), database: fake };
+}
 
 const entry = (deltaCoins: number, deltaHints: number) => ({
   id: 0,
@@ -79,5 +105,61 @@ describe('dailyBonusFor', () => {
     // A 10x10 pays `coinsForCompletion(10)`. If the daily ever beat that, the
     // fastest way to earn would be to not play.
     expect(DAILY_BONUS.cap).toBeLessThan(coinsForCompletion(10));
+  });
+});
+
+describe('SQLiteWalletRepository coin-gain announcements', () => {
+  beforeEach(() => {
+    (emitCoinGained as jest.Mock).mockClear();
+  });
+
+  it('announces a credit exactly once per positive record', async () => {
+    const { repository } = wallet();
+    await repository.record({
+      deltaCoins: 50,
+      deltaHints: 0,
+      reason: 'puzzle-complete',
+      ref: null,
+    });
+    expect(emitCoinGained).toHaveBeenCalledTimes(1);
+    expect(emitCoinGained).toHaveBeenCalledWith(50);
+  });
+
+  it('stays silent on a spend', async () => {
+    const { repository } = wallet();
+    await repository.record({
+      deltaCoins: -30,
+      deltaHints: -1,
+      reason: 'hint-spend',
+      ref: null,
+    });
+    expect(emitCoinGained).not.toHaveBeenCalled();
+  });
+
+  it('replays nothing for a one-time key that is already spent', async () => {
+    const { repository, database } = wallet();
+    (database.getFirstAsync as jest.Mock).mockResolvedValueOnce({ count: 1 });
+    await repository.recordOnce({
+      deltaCoins: 100,
+      deltaHints: 0,
+      reason: 'treasure-stop',
+      ref: '2026-08-23',
+    });
+    expect(database.runAsync).not.toHaveBeenCalled();
+    expect(emitCoinGained).not.toHaveBeenCalled();
+  });
+
+  it('records and announces a fresh one-time key', async () => {
+    const { repository, database } = wallet();
+    (database.getFirstAsync as jest.Mock).mockResolvedValueOnce(null);
+    await repository.recordOnce({
+      deltaCoins: 100,
+      deltaHints: 0,
+      reason: 'treasure-stop',
+      ref: '2026-08-23',
+    });
+    expect(database.runAsync).toHaveBeenCalledTimes(1);
+    expect(emitCoinGained).toHaveBeenCalledTimes(1);
+    expect(emitCoinGained).toHaveBeenCalledWith(100);
   });
 });

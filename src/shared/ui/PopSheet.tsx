@@ -7,6 +7,7 @@ import { createThemedStyles } from '@/shared/themed-styles';
 
 import { PopSurface } from './PopSurface';
 import { Text } from './Text';
+import { playUiTap } from './ui-sound';
 
 interface PopSheetProps {
   children: ReactNode;
@@ -36,7 +37,10 @@ export function PopSheet({ children, onDismiss, title }: PopSheetProps) {
         accessibilityRole="button"
         accessibilityLabel="Dismiss"
         style={[StyleSheet.absoluteFill, styles.scrim]}
-        onPress={onDismiss}
+        onPress={() => {
+          playUiTap();
+          onDismiss();
+        }}
       />
       <View style={styles.center} pointerEvents="box-none">
         <Animated.View style={[styles.card, cardStyle]}>

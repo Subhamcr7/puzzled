@@ -1,6 +1,7 @@
 export * from './catalog';
 export * from './daily';
 export * from './local/achievements-repository';
+export * from './local/coin-events';
 export * from './local/completions-repository';
 export * from './local/database';
 export * from './local/favourites-repository';

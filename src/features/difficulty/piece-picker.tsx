@@ -7,6 +7,7 @@ import { type ArtName } from '@/shared/art';
 import { createThemedStyles } from '@/shared/themed-styles';
 import { fonts, radii, shadow, spacing, typography } from '@/shared/theme';
 import { Art, Text } from '@/shared/ui';
+import { playUiTap } from '@/shared/ui/ui-sound';
 
 import { indexForOffset, offsetForIndex, pickerGeometry, snapOffsets } from './picker-geometry';
 
@@ -117,7 +118,10 @@ export function PiecePicker({ sizes, selected, saved, onSelect }: PiecePickerPro
                   `${board.lockedPieces} of ${board.totalPieces} already placed`
                 : `${expectedPieceCount(size)} pieces, ${tierFor(size)}`
             }
-            onPress={() => handlePress(index)}
+            onPress={() => {
+              playUiTap();
+              handlePress(index);
+            }}
             style={{ width: geometry.itemWidth }}
           >
             <View style={styles.itemBody}>

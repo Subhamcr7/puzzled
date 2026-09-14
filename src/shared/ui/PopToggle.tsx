@@ -7,6 +7,7 @@ import { useTheme } from '@/shared/theme-context';
 import { createThemedStyles } from '@/shared/themed-styles';
 
 import { PopSurface } from './PopSurface';
+import { playUiTap } from './ui-sound';
 
 const TRACK_WIDTH = 52;
 const TRACK_HEIGHT = 30;
@@ -39,7 +40,10 @@ export function PopToggle({ value, onChange, accessibilityLabel }: PopToggleProp
       accessibilityRole="switch"
       accessibilityState={{ checked: value }}
       accessibilityLabel={accessibilityLabel}
-      onPress={() => onChange(!value)}
+      onPress={() => {
+        playUiTap();
+        onChange(!value);
+      }}
     >
       <PopSurface
         radius={radii.pill}

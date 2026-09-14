@@ -1,9 +1,14 @@
-import { render, within } from '@testing-library/react-native';
+import { fireEvent, render, within } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
 import { radii } from '@/shared/theme';
 
 import { GameHeader, INFO_BOX_MIN_W } from './game-header';
+
+const mockPlayUiTap = jest.fn();
+jest.mock('@/shared/ui/ui-sound', () => ({
+  playUiTap: (...args: unknown[]) => mockPlayUiTap(...args),
+}));
 
 /** `mm:ss` or `h:mm:ss` → milliseconds, mirroring `formatClock`. */
 function msFor(face: string): number {
@@ -155,5 +160,15 @@ describe('GameHeader timer-box geometry', () => {
     expect(countText.textAlign).toBe('center');
     expect(clockText.textAlign).toBe('center');
     expect(clockText.fontVariant).toContain('tabular-nums');
+  });
+});
+
+describe('GameHeader tap sound', () => {
+  it('plays one tap sound when Back is pressed', () => {
+    mockPlayUiTap.mockClear();
+    const { rendered, onBack } = renderHeader();
+    fireEvent.press(within(rendered.getByTestId('game-header-top')).getByLabelText('Back'));
+    expect(mockPlayUiTap).toHaveBeenCalledTimes(1);
+    expect(onBack).toHaveBeenCalledTimes(1);
   });
 });

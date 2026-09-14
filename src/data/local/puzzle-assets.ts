@@ -13,6 +13,11 @@ const PUZZLE_IMAGE_MODULES: Record<string, number> = {
   'pond-friends': require('../../../assets/puzzles/pond-friends.jpg'),
   'frog-mugshot': require('../../../assets/puzzles/frog-mugshot.jpg'),
   'lazy-afternoon': require('../../../assets/puzzles/lazy-afternoon.jpg'),
+  'painted-landscape': require('../../../assets/puzzles/jozefm84-painted-landscape-10246533_1280.png'),
+  'de-vera': require('../../../assets/puzzles/kestner-brae-kb-de-vera-gKOe64kzJS0-unsplash.jpg'),
+  'kevin-bowler': require('../../../assets/puzzles/kevin-bowler-uMMa63wQcBQ-unsplash.jpg'),
+  'mb-tr': require('../../../assets/puzzles/m-b-Tr-faG4v38w-unsplash.jpg'),
+  'toni-zaat': require('../../../assets/puzzles/toni-zaat-bl3yc0yqjzq-unsplash.jpg'),
 };
 
 export function getPuzzleImageModule(puzzleId: string): number | null {

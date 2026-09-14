@@ -35,6 +35,7 @@ import {
   useTabBarSpace,
   WordmarkTitle,
 } from '@/shared/ui';
+import { playUiTap } from '@/shared/ui/ui-sound';
 
 /** Coins for finishing the puzzle picked for today. */
 export const DAILY_CHALLENGE_REWARD = 50;
@@ -250,7 +251,10 @@ export function HomeScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`${data.coins ?? 'Unknown'} coins. Get more.`}
-            onPress={() => router.push('/coins')}
+            onPress={() => {
+              playUiTap();
+              router.push('/coins');
+            }}
             style={styles.coinPill}
           >
             <Art name="coin" size={26} />
@@ -271,7 +275,10 @@ export function HomeScreen() {
             accessibilityRole="button"
             accessibilityLabel="Settings"
             hitSlop={10}
-            onPress={() => router.push('/settings')}
+            onPress={() => {
+              playUiTap();
+              router.push('/settings');
+            }}
             style={styles.gearButton}
           >
             <Art name="gear" size={31} />
@@ -424,7 +431,10 @@ export function HomeScreen() {
                       accessibilityRole="button"
                       accessibilityLabel="See every puzzle"
                       hitSlop={8}
-                      onPress={() => router.navigate('/puzzles')}
+                      onPress={() => {
+                        playUiTap();
+                        router.navigate('/puzzles');
+                      }}
                     >
                       <Text style={styles.seeAll}>View All</Text>
                     </Pressable>
@@ -459,7 +469,10 @@ function ContinueThumb({ item, onPress }: { item: ContinueItem; onPress: () => v
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`Continue ${item.title}, ${item.percent} percent done`}
-      onPress={onPress}
+      onPress={() => {
+        playUiTap();
+        onPress();
+      }}
       style={styles.thumbWrap}
     >
       <View style={styles.thumb}>
@@ -487,7 +500,10 @@ function QuickLink({ art, label, onPress }: { art: ArtName; label: string; onPre
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      onPress={onPress}
+      onPress={() => {
+        playUiTap();
+        onPress();
+      }}
       style={styles.quickLink}
     >
       <PopSurface fill={theme.colors.surface} radius={radii.md}>

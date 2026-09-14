@@ -36,6 +36,21 @@ export function treasureRewardForStop(stop: number): number {
   return stop === TREASURE_STOPS ? 200 : 20 + (stop - 1) * 10;
 }
 
+/**
+ * Campaign difficulty shown on the map for a stop.
+ *
+ * Display copy only — the actual challenge lets the player pick any grid size
+ * (Easy to Hard) on the difficulty screen, so the tier never constrains play.
+ * It climbs along the path so the week reads as building: 1–2 Easy, 3–5
+ * Medium, 6–7 Hard. Lives here so the screen and its tests agree by
+ * construction, the same way the rewards do.
+ */
+export function treasureTierForStop(stop: number): 'Easy' | 'Medium' | 'Hard' {
+  if (stop >= 1 && stop <= 2) return 'Easy';
+  if (stop >= 3 && stop <= 5) return 'Medium';
+  return 'Hard';
+}
+
 export interface TreasureProgress {
   /** Consecutive days the daily challenge has been finished, ending today. */
   streak: number;
@@ -91,4 +106,64 @@ export function treasureProgress(
     doneToday: completedDays.includes(todayKey),
     completedDays,
   };
+}
+
+function addDays(key: string, days: number): string {
+  const cursor = new Date(`${key}T00:00:00`);
+  cursor.setDate(cursor.getDate() + days);
+  return dateKey(cursor);
+}
+
+/**
+ * The day a stop's challenge belongs to, so a node can show that day's puzzle
+ * image.
+ *
+ * A reached stop (and the stop the player stands on) maps to the actual played
+ * day from the completions log — the newest entries of `completedDays` are the
+ * current run, and stop `n` sits `s - n` places back from the current stop `s`.
+ * A stop still ahead maps to the day it will land if the trail keeps moving:
+ * tomorrow when today already counts, today when today's challenge is still
+ * open, and `n - 1` days ahead when the trail has not started. Both are
+ * deterministic, so the map never flickers between visits.
+ */
+export function treasureStopDayKey(
+  progress: TreasureProgress,
+  todayKey: string,
+  stop: number,
+): string | null {
+  if (stop < 1 || stop > TREASURE_STOPS) {
+    return null;
+  }
+  if (progress.streak <= 0) {
+    return addDays(todayKey, stop - 1);
+  }
+  const s = ((progress.streak - 1) % TREASURE_STOPS) + 1;
+  if (stop <= s) {
+    const day = progress.completedDays[s - stop];
+    if (day != null) {
+      return day;
+    }
+  }
+  const lastPlayed = addDays(todayKey, progress.doneToday ? 0 : -1);
+  return addDays(lastPlayed, stop - s);
+}
+
+/**
+ * The puzzle whose image a stop shows.
+ *
+ * `pickDailyPuzzle` is deterministic from a day key, and a stop's day comes
+ * from `treasureStopDayKey`, so the image is stable across visits and laps
+ * without remembering anything. For reached stops it is the puzzle that was
+ * actually played that day; for the trail ahead it is the (deterministic)
+ * challenge the day would hold.
+ */
+export function treasurePuzzleForStop<T extends { id: string }>(
+  pool: readonly T[],
+  completions: readonly PuzzleCompletion[],
+  todayKey: string,
+  stop: number,
+): T | null {
+  const progress = treasureProgress(pool, completions, todayKey);
+  const day = treasureStopDayKey(progress, todayKey, stop);
+  return day ? pickDailyPuzzle(pool, day) : null;
 }

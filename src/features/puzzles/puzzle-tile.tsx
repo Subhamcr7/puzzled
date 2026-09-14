@@ -4,6 +4,7 @@ import { radii, spacing, typography } from '@/shared/theme';
 import { useTheme } from '@/shared/theme-context';
 import { createThemedStyles } from '@/shared/themed-styles';
 import { Art, EnterView, PopIcon, PopSurface, Text } from '@/shared/ui';
+import { playUiTap } from '@/shared/ui/ui-sound';
 
 import { type TileBadge } from './tile-progress';
 
@@ -46,7 +47,14 @@ export function PuzzleTile({ source, badge, index, onPress }: PuzzleTileProps) {
 
   return (
     <EnterView index={index} style={styles.tile}>
-      <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        onPress={() => {
+          playUiTap();
+          onPress();
+        }}
+      >
         {/* `PopSurface`'s face is already `overflow: hidden`
             (`PopSurface.tsx:70`), so the artwork is clipped to the corner radius
             without this having to restate it. */}

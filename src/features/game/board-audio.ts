@@ -1,6 +1,7 @@
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 
-import type { AppSettings } from '@/data';
+import { onCoinGained, type AppSettings } from '@/data';
+import { setUiTapHandler } from '@/shared/ui/ui-sound';
 
 /**
  * Board SFX + ambient music, built on expo-audio's player API
@@ -14,15 +15,20 @@ import type { AppSettings } from '@/data';
  * throw: a failed play must not interrupt a drag.
  */
 
-export type SfxName = 'pickup' | 'snap' | 'complete' | 'tap';
+export type SfxName = 'pickup' | 'snap' | 'complete' | 'buttonTap' | 'place' | 'coinGain';
 
 // Metro resolves `require` of local assets to a numeric module id at bundle
 // time (same pattern as `src/data/local/puzzle-assets.ts` for images).
+//
+// `buttonTap` / `place` / `coinGain` are the three product-supplied clips
+// (`assets/audio/README.md`); `snap` remains as the synthesized safeguard.
 const SFX_SOURCES: Record<SfxName, number> = {
   pickup: require('../../../assets/audio/pickup.wav'),
   snap: require('../../../assets/audio/snap.wav'),
   complete: require('../../../assets/audio/complete.wav'),
-  tap: require('../../../assets/audio/tap.wav'),
+  buttonTap: require('../../../assets/audio/button-tap.mp3'),
+  place: require('../../../assets/audio/puzzle-place.mp3'),
+  coinGain: require('../../../assets/audio/coin-gain.mp3'),
 };
 
 const AMBIENT_SOURCE: number = require('../../../assets/audio/ambient.wav');
@@ -85,6 +91,7 @@ function applyMusicState(): void {
 export async function initBoardAudio(settings: AppSettings): Promise<void> {
   sfxEnabled = settings.sound;
   musicEnabled = settings.music;
+  registerGlobalUiSounds();
   try {
     await ensurePlayersLoaded();
     applyMusicState();
@@ -133,5 +140,42 @@ export function pauseBoardAudio(): void {
     ambientPlayer?.pause();
   } catch {
     // Best-effort only.
+  }
+}
+
+/**
+ * Point the app-wide pressables and wallet at this module's players.
+ *
+ * Idempotent and safe to call repeatedly: the UI-tap handler is re-pointed at
+ * our `playSfx`, and the coin event subscription is installed exactly once.
+ * Runs from `initBoardAudio` (board mount) and `configureAudioSettings` (app
+ * launch), so the first of the two to execute wins without double-subscribing.
+ */
+let coinUnsubscribe: (() => void) | null = null;
+
+function registerGlobalUiSounds(): void {
+  setUiTapHandler(() => playSfx('buttonTap'));
+  if (!coinUnsubscribe) {
+    coinUnsubscribe = onCoinGained(() => playSfx('coinGain'));
+  }
+}
+
+/**
+ * Set the sound/music flags and make sure every player (including the global
+ * UI sounds) exists — without touching the ambient loop.
+ *
+ * Called at app launch with the persisted settings and again whenever the
+ * Settings screen flips Sound/Music. Unlike `initBoardAudio` this deliberately
+ * does NOT call `applyMusicState`, so ambient still only starts/stops with a
+ * board — music behaviour is unchanged. Never throws.
+ */
+export function configureAudioSettings(settings: AppSettings): void {
+  sfxEnabled = settings.sound;
+  musicEnabled = settings.music;
+  registerGlobalUiSounds();
+  try {
+    void ensurePlayersLoaded();
+  } catch {
+    // Best-effort; a failed load surfaces on the next play attempt.
   }
 }

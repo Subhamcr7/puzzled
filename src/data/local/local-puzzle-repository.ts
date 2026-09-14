@@ -59,6 +59,64 @@ const bundledPuzzles: PuzzleDefinition[] = [
     seed: 'lazy-afternoon-v1',
     revision: 1,
   },
+
+  // Journey art pack: five player-supplied images. Titles are best-effort source
+  // metadata (model cannot read the pictures); rename freely.
+  {
+    id: 'painted-landscape',
+    title: 'Painted Landscape',
+    image: {
+      uri: 'asset://puzzles/painted-landscape',
+      pixelSize: { width: 1280, height: 1004 },
+    },
+    gridSize: 4,
+    seed: 'painted-landscape-v1',
+    revision: 1,
+  },
+  {
+    id: 'de-vera',
+    title: 'De Vera',
+    image: {
+      uri: 'asset://puzzles/de-vera',
+      pixelSize: { width: 3130, height: 2075 },
+    },
+    gridSize: 4,
+    seed: 'de-vera-v1',
+    revision: 1,
+  },
+  {
+    id: 'kevin-bowler',
+    title: 'Kevin Bowler',
+    image: {
+      uri: 'asset://puzzles/kevin-bowler',
+      pixelSize: { width: 1920, height: 1080 },
+    },
+    gridSize: 4,
+    seed: 'kevin-bowler-v1',
+    revision: 1,
+  },
+  {
+    id: 'mb-tr',
+    title: 'M.B.',
+    image: {
+      uri: 'asset://puzzles/mb-tr',
+      pixelSize: { width: 1920, height: 960 },
+    },
+    gridSize: 4,
+    seed: 'mb-tr-v1',
+    revision: 1,
+  },
+  {
+    id: 'toni-zaat',
+    title: 'Toni Zaat',
+    image: {
+      uri: 'asset://puzzles/toni-zaat',
+      pixelSize: { width: 1920, height: 1280 },
+    },
+    gridSize: 4,
+    seed: 'toni-zaat-v1',
+    revision: 1,
+  },
 ];
 
 function clonePuzzle(puzzle: PuzzleDefinition): PuzzleDefinition {

@@ -5,6 +5,11 @@ import { type PuzzleDefinition } from '@/game-engine';
 
 import { PuzzlesScreen } from './puzzles-screen';
 
+const mockPlayUiTap = jest.fn();
+jest.mock('@/shared/ui/ui-sound', () => ({
+  playUiTap: (...args: unknown[]) => mockPlayUiTap(...args),
+}));
+
 jest.mock('@/data', () => ({
   listCatalog: jest.fn(),
   getProgressRepository: jest.fn(),
@@ -101,8 +106,10 @@ describe('PuzzlesScreen', () => {
   });
 
   it('opens the difficulty picker when a tile is tapped', async () => {
+    mockPlayUiTap.mockClear();
     const { getAllByLabelText } = await renderScreen();
     fireEvent.press(getAllByLabelText('Puzzle image. Double tap to select.')[0]);
+    expect(mockPlayUiTap).toHaveBeenCalledTimes(1);
     expect(mockPush).toHaveBeenCalledWith({
       pathname: '/difficulty/[puzzleId]',
       params: { puzzleId: 'first-light' },

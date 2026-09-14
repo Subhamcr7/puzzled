@@ -12,6 +12,7 @@ import { radii, spacing, typography } from '@/shared/theme';
 import { Art } from './Art';
 import { PopSurface } from './PopSurface';
 import { MAX_FONT_SCALE, Text } from './Text';
+import { playUiTap } from './ui-sound';
 
 // `Tabs.tabBar` receives BottomTabBarProps; derive it without a subpath import
 // (expo-router does not re-export the type from its top-level entry point).
@@ -122,7 +123,10 @@ export function PopTabBar({ state, navigation }: TabBarProps) {
               accessibilityRole="button"
               accessibilityState={focused ? { selected: true } : {}}
               accessibilityLabel={meta.label}
-              onPress={onPress}
+              onPress={() => {
+                playUiTap();
+                onPress();
+              }}
               style={styles.item}
             >
               {/* The art is full-colour, so focus cannot be shown by tinting

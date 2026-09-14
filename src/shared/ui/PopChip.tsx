@@ -7,6 +7,7 @@ import { Art } from './Art';
 import { PopSurface } from './PopSurface';
 import { type PopIconName, PopIcon } from './PopIcon';
 import { Text } from './Text';
+import { playUiTap } from './ui-sound';
 import { type ArtName } from '@/shared/art';
 
 interface PopChipProps {
@@ -37,7 +38,10 @@ export function PopChip({ label, art, icon, selected = false, tone, onPress }: P
       accessibilityRole="button"
       accessibilityState={{ selected }}
       accessibilityLabel={label}
-      onPress={onPress}
+      onPress={() => {
+        playUiTap();
+        onPress?.();
+      }}
     >
       <PopSurface
         radius={radii.pill}

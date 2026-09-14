@@ -7,10 +7,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 // `DEFAULT_SETTINGS` is imported rather than restated: a local copy drifted the
 // moment a non-boolean setting was added, and the compiler cannot keep one honest.
 import { DEFAULT_SETTINGS, getSettingsRepository, type AppSettings } from '@/data';
+import { configureAudioSettings } from '@/features/game/board-audio';
 import { radii, spacing, typography } from '@/shared/theme';
 import { useTheme } from '@/shared/theme-context';
 import { createThemedStyles } from '@/shared/themed-styles';
 import { Art, PopHeader, PopIcon, PopSurface, PopToggle, Text, ThemeGround } from '@/shared/ui';
+import { playUiTap } from '@/shared/ui/ui-sound';
 
 /** Only the boolean settings get a switch; the theme has its own picker. */
 type ToggleKey = 'sound' | 'music' | 'haptics' | 'showGrid' | 'snapAssist';
@@ -76,7 +78,13 @@ export function SettingsScreen() {
   }, []);
 
   const onToggle = (key: keyof AppSettings) => (next: boolean) => {
-    setSettings((prev) => ({ ...prev, [key]: next }));
+    const merged = { ...settings, [key]: next };
+    setSettings(merged);
+    // Flip the live audio flags the moment Sound/Music are toggled, so the app
+    // is muted immediately — not only from the next board mount.
+    if (key === 'sound' || key === 'music') {
+      configureAudioSettings(merged);
+    }
     void (async () => {
       try {
         await (await getSettingsRepository()).set({ [key]: next });
@@ -127,7 +135,10 @@ export function SettingsScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Themes"
-            onPress={() => router.push('/themes')}
+            onPress={() => {
+              playUiTap();
+              router.push('/themes');
+            }}
           >
             <PopSurface fill={theme.colors.surface} radius={radii.lg} contentStyle={styles.linkRow}>
               <Art name="sticker-book" size={34} />

@@ -7,6 +7,7 @@ import { useTheme } from '@/shared/theme-context';
 import { type Theme } from '@/shared/themes';
 
 import { Text } from './Text';
+import { playUiTap } from './ui-sound';
 
 export type PopTone =
   'grass' | 'leaf' | 'sky' | 'berry' | 'blossom' | 'honey' | 'apricot' | 'cherry' | 'surface';
@@ -114,7 +115,10 @@ export function PopButton({
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled }}
       disabled={disabled}
-      onPress={onPress}
+      onPress={() => {
+        playUiTap();
+        onPress?.();
+      }}
       onPressIn={() => {
         press.value = withSpring(1, springs.snappy);
       }}

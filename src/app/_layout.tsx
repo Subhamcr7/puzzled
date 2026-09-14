@@ -7,6 +7,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { getSettingsRepository } from '@/data';
+import { configureAudioSettings } from '@/features/game/board-audio';
+
 import { ThemeProvider, useTheme } from '@/shared/theme-context';
 import { LoadingScreen } from '@/shared/ui';
 
@@ -51,6 +54,28 @@ export default function RootLayout() {
    */
   const [loading, setLoading] = useState(true);
   const finishLoading = useCallback(() => setLoading(false), []);
+
+  /**
+   * Apply the persisted sound/music flags and bring up the global UI sounds
+   * (button tap, coin gain) as soon as the app launches — not only when a board
+   * mounts. Ambient music still starts and stops with the board (`initBoardAudio`).
+   */
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const settings = await (await getSettingsRepository()).get();
+        if (active) {
+          configureAudioSettings(settings);
+        }
+      } catch {
+        // Best-effort: audio defaults stay active until a board loads settings.
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   /**
    * Whether the native splash window is actually gone.

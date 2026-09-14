@@ -7,6 +7,7 @@ import { createThemedStyles } from '@/shared/themed-styles';
 
 import { Art } from './Art';
 import { Text } from './Text';
+import { playUiTap } from './ui-sound';
 
 interface PopHeaderProps {
   title: string;
@@ -33,7 +34,10 @@ export function PopHeader({ title, right, onBack, titleColor }: PopHeaderProps) 
             accessibilityRole="button"
             accessibilityLabel="Go back"
             hitSlop={12}
-            onPress={onBack}
+            onPress={() => {
+              playUiTap();
+              onBack();
+            }}
             style={styles.backButton}
           >
             <Art name="back" size={26} />

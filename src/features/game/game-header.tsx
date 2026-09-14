@@ -5,6 +5,7 @@ import { radii, shadow, spacing, typography } from '@/shared/theme';
 import { useTheme } from '@/shared/theme-context';
 import { createThemedStyles } from '@/shared/themed-styles';
 import { Art, PopSurface, Text } from '@/shared/ui';
+import { playUiTap } from '@/shared/ui/ui-sound';
 
 import { formatClock } from './play-clock';
 
@@ -116,7 +117,10 @@ function HeaderRoundButton({
       accessibilityLabel={label}
       accessibilityState={{ selected: active }}
       hitSlop={10}
-      onPress={onPress}
+      onPress={() => {
+        playUiTap();
+        onPress();
+      }}
       style={styles.headerRoundButton}
     >
       <PopSurface

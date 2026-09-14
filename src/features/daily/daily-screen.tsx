@@ -16,6 +16,7 @@ import { radii, spacing, typography } from '@/shared/theme';
 import { useTheme } from '@/shared/theme-context';
 import { createThemedStyles } from '@/shared/themed-styles';
 import { Art, PopButton, PopHeader, PopSurface, Text, ThemeGround } from '@/shared/ui';
+import { playUiTap } from '@/shared/ui/ui-sound';
 
 import { buildMonthGrid, MONTHS, WEEKDAYS } from './calendar';
 
@@ -192,7 +193,10 @@ export function DailyScreen() {
                                 ? `${MONTHS[today.getMonth()]} ${day}, not yet unlocked`
                                 : `${MONTHS[today.getMonth()]} ${day}`
                             }
-                            onPress={() => setSelectedDay(day)}
+                            onPress={() => {
+                              playUiTap();
+                              setSelectedDay(day);
+                            }}
                             style={[
                               styles.dayHit,
                               isSelected && styles.daySelected,

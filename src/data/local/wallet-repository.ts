@@ -2,6 +2,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type { GridSize } from '@/game-engine';
 
+import { emitCoinGained } from './coin-events';
 import type {
   LedgerEntry,
   LedgerReason,
@@ -118,6 +119,11 @@ export class SQLiteWalletRepository implements WalletRepository {
       entry.ref,
       new Date().toISOString(),
     );
+    // Announce a credit so the UI can play the coin sound. Negative deltas
+    // (spends) and deduped `recordOnce` no-ops stay silent.
+    if (entry.deltaCoins > 0) {
+      emitCoinGained(entry.deltaCoins);
+    }
     return this.balance();
   }
 

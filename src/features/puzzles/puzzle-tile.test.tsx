@@ -3,6 +3,11 @@ import { StyleSheet } from 'react-native';
 
 import { PuzzleTile } from './puzzle-tile';
 
+const mockPlayUiTap = jest.fn();
+jest.mock('@/shared/ui/ui-sound', () => ({
+  playUiTap: (...args: unknown[]) => mockPlayUiTap(...args),
+}));
+
 /**
  * The tile is the whole Puzzles screen now, so its contract is the screen's:
  * one tap target per image, the artwork carried through, and progress announced
@@ -99,6 +104,13 @@ describe('PuzzleTile', () => {
     expect(getByLabelText('Puzzle image. Double tap to select.').props.accessibilityRole).toBe(
       'button',
     );
+  });
+
+  it('plays one tap sound when the tile is pressed', () => {
+    mockPlayUiTap.mockClear();
+    const { getByLabelText } = renderTile();
+    fireEvent.press(getByLabelText('Puzzle image. Double tap to select.'));
+    expect(mockPlayUiTap).toHaveBeenCalledTimes(1);
   });
 
   it('wears the compact UI-pass column width of 49%', () => {

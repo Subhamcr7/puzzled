@@ -1,19 +1,29 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { LayoutChangeEvent, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Image, LayoutChangeEvent, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Line } from 'react-native-svg';
 
-import { dateKey, getCompletionsRepository, getWalletRepository, listCatalog } from '@/data';
+import {
+  dateKey,
+  getCompletionsRepository,
+  getWalletRepository,
+  listCatalog,
+  pickDailyPuzzle,
+  resolvePuzzleImageSource,
+} from '@/data';
 import { radii, spacing, typography } from '@/shared/theme';
 import { useTheme } from '@/shared/theme-context';
 import { createThemedStyles } from '@/shared/themed-styles';
 import { Art, PopButton, PopHeader, PopSurface, Text, ThemeGround } from '@/shared/ui';
+import { playUiTap } from '@/shared/ui/ui-sound';
 
 import {
   TREASURE_STOPS,
   treasureProgress,
   treasureRewardForStop,
+  treasureStopDayKey,
+  treasureTierForStop,
   type TreasureProgress,
 } from './treasure';
 
@@ -46,9 +56,18 @@ const NODE = 46;
 
 interface HuntData extends TreasureProgress {
   coins: number | null;
+  /** Per-stop artwork source, index 0 = stop 1. `resolvePuzzleImageSource`'s contract. */
+  images: (number | string | null)[];
 }
 
-const EMPTY: HuntData = { streak: 0, stop: 0, doneToday: false, completedDays: [], coins: null };
+const EMPTY: HuntData = {
+  streak: 0,
+  stop: 0,
+  doneToday: false,
+  completedDays: [],
+  coins: null,
+  images: [],
+};
 
 async function loadHunt(todayKey: string): Promise<HuntData> {
   const { bundled, user } = await listCatalog();
@@ -70,7 +89,15 @@ async function loadHunt(todayKey: string): Promise<HuntData> {
     // Same contract as everywhere else: no balance beats a wrong one.
   }
 
-  return { ...treasureProgress(pool, completions, todayKey), coins };
+  const progress = treasureProgress(pool, completions, todayKey);
+  const images: (number | string | null)[] = [];
+  for (let stop = 1; stop <= TREASURE_STOPS; stop += 1) {
+    const day = treasureStopDayKey(progress, todayKey, stop);
+    const puzzle = day ? pickDailyPuzzle(pool, day) : null;
+    images.push(puzzle ? resolvePuzzleImageSource(puzzle) : null);
+  }
+
+  return { ...progress, coins, images };
 }
 
 export function TreasureScreen() {
@@ -82,6 +109,11 @@ export function TreasureScreen() {
   const [today, setToday] = useState(() => dateKey(new Date()));
   /** Measured map width, so stops can be placed against the real size. */
   const [mapWidth, setMapWidth] = useState(0);
+  /** The map's top inside the ScrollView's content, for auto-scrolling to the current stop. */
+  const [mapTop, setMapTop] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+  /** The stop the map has already been scrolled to, so navigation only moves once. */
+  const scrolledToRef = useRef<number | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -128,11 +160,32 @@ export function TreasureScreen() {
 
   const mapHeight = mapWidth * (MAP_H / MAP_W);
   const onMapLayout = useCallback((event: LayoutChangeEvent) => {
-    const { width } = event.nativeEvent.layout;
+    const { width, y } = event.nativeEvent.layout;
     setMapWidth((current) => (Math.abs(current - width) < 1 ? current : width));
+    setMapTop(y);
   }, []);
 
+  // Bring the stop the player stands on into view. The map is a tall SVG trail,
+  // and without this the current stop can sit below the fold on first visit —
+  // the player reads a header about a stop they cannot see. It fires once per
+  // stop: afterwards the player's own scrolling owns the viewport.
+  useEffect(() => {
+    if (mapWidth <= 0 || data.stop <= 0 || data.stop > NODES.length) {
+      return;
+    }
+    if (scrolledToRef.current === data.stop) {
+      return;
+    }
+    scrolledToRef.current = data.stop;
+    const node = NODES[data.stop - 1];
+    const nodeY = mapTop + node.y * (mapWidth / MAP_W);
+    // Fire-and-forget like the audio calls: an unmeasured scroll target must
+    // never interrupt the map render.
+    scrollRef.current?.scrollTo?.({ y: Math.max(0, nodeY - NODE), animated: true });
+  }, [data.stop, mapWidth, mapTop]);
+
   const scale = mapWidth / MAP_W;
+  const currentTier = data.stop >= 1 ? treasureTierForStop(data.stop) : 'Easy';
   const nextReward = treasureRewardForStop(
     data.stop >= TREASURE_STOPS ? 1 : Math.max(1, data.stop + 1),
   );
@@ -154,13 +207,13 @@ export function TreasureScreen() {
           }
         />
 
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView ref={scrollRef} contentContainerStyle={styles.content}>
           <PopSurface fill={theme.colors.surface} radius={radii.lg} contentStyle={styles.mapCard}>
             <View style={styles.mapHead}>
               <Text style={styles.mapTitle}>
                 {data.streak === 0
                   ? 'Start the trail'
-                  : `Day ${data.streak} — stop ${data.stop} of ${TREASURE_STOPS}`}
+                  : `Day ${data.streak} — stop ${data.stop} of ${TREASURE_STOPS} · ${currentTier}`}
               </Text>
               <Text style={styles.mapMeta}>
                 {data.doneToday
@@ -169,7 +222,11 @@ export function TreasureScreen() {
               </Text>
             </View>
 
-            <View style={[styles.map, { height: mapHeight }]} onLayout={onMapLayout}>
+            <View
+              testID="treasure-map"
+              style={[styles.map, { height: mapHeight }]}
+              onLayout={onMapLayout}
+            >
               {mapWidth > 0 ? (
                 <>
                   {/* The trail, one segment per pair so the walked part can be
@@ -201,38 +258,72 @@ export function TreasureScreen() {
                     const reached = stop <= data.stop;
                     const current = stop === data.stop;
                     const isChest = stop === TREASURE_STOPS;
-                    return (
+                    const image = data.images[stop - 1] ?? null;
+                    const tier = treasureTierForStop(stop);
+                    const label = reached
+                      ? current
+                        ? `Stop ${stop} of ${TREASURE_STOPS}, ${tier} difficulty, current level`
+                        : `Stop ${stop} of ${TREASURE_STOPS}, ${tier} difficulty, reached`
+                      : `Stop ${stop} of ${TREASURE_STOPS}, ${tier} difficulty, ${treasureRewardForStop(stop)} coins, locked`;
+
+                    const art = isChest ? (
+                      <Art name={reached ? 'chest-open' : 'chest'} size={30} />
+                    ) : image != null ? (
+                      <Image
+                        source={typeof image === 'number' ? image : { uri: image }}
+                        style={[styles.nodeImage, !reached && styles.nodeImageLocked]}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Art name="puzzle-quad" size={22} />
+                    );
+
+                    const nodeStyle = [
+                      styles.node,
+                      {
+                        left: node.x * scale - NODE / 2,
+                        top: node.y * scale - NODE / 2,
+                        backgroundColor: reached
+                          ? theme.colors.grass
+                          : isChest
+                            ? theme.colors.honey
+                            : theme.colors.paper,
+                      },
+                      !reached && !isChest && styles.nodeLocked,
+                      current && styles.nodeCurrent,
+                    ];
+
+                    return reached ? (
+                      <Pressable
+                        key={stop}
+                        accessibilityRole="button"
+                        accessibilityLabel={label}
+                        onPress={() => {
+                          playUiTap();
+                          // A reached stop from an earlier day replays from the
+                          // gallery (a tab beneath this screen, so it unwinds
+                          // rather than stacking); the current stop is today's
+                          // challenge.
+                          router.push(current ? '/daily' : '/puzzles');
+                        }}
+                        style={nodeStyle}
+                      >
+                        {art}
+                      </Pressable>
+                    ) : (
                       <View
                         key={stop}
                         accessible
                         accessibilityRole="text"
-                        accessibilityLabel={
-                          reached
-                            ? `Stop ${stop}, reached`
-                            : `Stop ${stop}, ${treasureRewardForStop(stop)} coins`
-                        }
-                        style={[
-                          styles.node,
-                          {
-                            left: node.x * scale - NODE / 2,
-                            top: node.y * scale - NODE / 2,
-                            backgroundColor: reached
-                              ? theme.colors.grass
-                              : isChest
-                                ? theme.colors.honey
-                                : theme.colors.paper,
-                          },
-                          !reached && !isChest && styles.nodeLocked,
-                          current && styles.nodeCurrent,
-                        ]}
+                        accessibilityLabel={label}
+                        style={nodeStyle}
                       >
-                        {isChest ? (
-                          <Art name={reached ? 'chest-open' : 'chest'} size={30} />
-                        ) : reached ? (
-                          <Art name="coin-check" size={24} />
-                        ) : (
-                          <Text style={styles.nodeLabel}>{treasureRewardForStop(stop)}</Text>
-                        )}
+                        {art}
+                        {!isChest ? (
+                          <View style={styles.lockBadge}>
+                            <Art name="lock" size={14} />
+                          </View>
+                        ) : null}
                       </View>
                     );
                   })}
@@ -295,6 +386,24 @@ const useStyles = createThemedStyles((theme) =>
       // The trail runs underneath, so every stop needs to sit on something.
       borderWidth: 3,
       borderColor: theme.colors.surface,
+      // A node's puzzle artwork fills its face, so it must clip to the circle
+      // rather than poking square corners out of it.
+      overflow: 'hidden',
+    },
+    // Puzzle artwork fills the reached/current face and the locked face alike;
+    // locked just dims it so the eye reads the ring and lock rather than colour.
+    nodeImage: { width: '100%', height: '100%' },
+    nodeImageLocked: { opacity: 0.35 },
+    // A small translucent disc over the picture, so a locked stop reads locked
+    // even though its (dimmed) artwork still shows what it will be.
+    lockBadge: {
+      position: 'absolute',
+      width: 24,
+      height: 24,
+      borderRadius: radii.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(58, 43, 26, 0.35)',
     },
     /**
      * An unreached stop is filled with the page ground, not the card ground.
@@ -309,7 +418,6 @@ const useStyles = createThemedStyles((theme) =>
       // Scaled rather than shadowed: a shadow on a themed ground reads as smudge.
       transform: [{ scale: 1.12 }],
     },
-    nodeLabel: { ...typography.caption, fontSize: 12, color: theme.colors.inkMuted },
     footnote: { ...typography.caption, color: theme.colors.inkMuted, textAlign: 'center' },
   }),
 );
