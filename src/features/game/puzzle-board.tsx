@@ -1359,6 +1359,28 @@ export function PuzzleBoard({
       // so position.x ∈ [0, boardSize.width - width] (and likewise for y).
       const clampedPosition = clampPieceToBoard(position, prepared, boardSize);
 
+      // --- TEMPORARY DEBUG (remove before production) ---
+      const _dbgDist = {
+        x: Math.abs(clampedPosition.x - solved.x),
+        y: Math.abs(clampedPosition.y - solved.y),
+      };
+      const _dbgSnap = isWithinSnapDistance(clampedPosition, solved, snapThreshold);
+      console.log(
+        `[releasePiece] id=${id} src=${source} idx=${index} ` +
+          `canvas=(${canvasX.toFixed(1)},${canvasY.toFixed(1)}) ` +
+          `cam=(${camTx.value.toFixed(1)},${camTy.value.toFixed(1)},${camScale.value.toFixed(2)}) ` +
+          `board=(${boardOffsetX.toFixed(1)},${boardOffsetY.toFixed(1)},${boardScale.toFixed(3)},pad=${boardPad}) ` +
+          `pos=(${position.x.toFixed(1)},${position.y.toFixed(1)}) ` +
+          `solved=(${solved.x.toFixed(1)},${solved.y.toFixed(1)}) ` +
+          `clamped=(${clampedPosition.x.toFixed(1)},${clampedPosition.y.toFixed(1)}) ` +
+          `dist=(${_dbgDist.x.toFixed(1)},${_dbgDist.y.toFixed(1)}) ` +
+          `thresh=${snapThreshold.toFixed(1)} snap=${_dbgSnap} ` +
+          `prepared=(${prepared.cx.toFixed(1)},${prepared.cy.toFixed(1)},w=${prepared.width.toFixed(1)},h=${prepared.height.toFixed(1)}) ` +
+          `boardZoneH=${boardZoneH.toFixed(1)} boardSize=(${boardSize.width},${boardSize.height}) ` +
+          `dragging=${draggingId ?? 'null'} looseIds=${JSON.stringify(looseIdsRef.current)}`
+      );
+      // --- END TEMPORARY DEBUG ---
+
       const now = new Date().toISOString();
       const raised = raisePiece(sessionRef.current, id, now);
       const elapsedMs = getElapsedMsRef.current();
