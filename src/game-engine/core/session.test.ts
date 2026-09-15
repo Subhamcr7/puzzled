@@ -350,6 +350,27 @@ describe('game session primitives', () => {
       expect(next.pieces.find((p) => p.pieceId === 'B')?.position).toEqual({ x: 150, y: 0 });
     });
 
+    it('edge pieces snap using the raw position even when clamping would push them away', () => {
+      let session = fresh();
+      const threshold = snapThresholdForCellSize(50);
+
+      session = dropPiece({
+        session,
+        pieceId: 'C',
+        position: { ...SOLVED.C },
+        solvedPosition: SOLVED.C,
+        now: '2026-09-15T00:00:01.000Z',
+        elapsedMs: 1000,
+        snapThreshold: threshold,
+        boundsById: BOUNDS,
+        boardHeight: BOARD_HEIGHT,
+      });
+
+      const piece = session.pieces.find((p) => p.pieceId === 'C');
+      expect(piece?.isLocked).toBe(true);
+      expect(piece?.position).toEqual(SOLVED.C);
+    });
+
     it('snap is the single lock event: re-dropping a locked piece changes nothing', () => {
       let session = dropNear(fresh(), 'A');
       session = dropNear(session, 'A');
