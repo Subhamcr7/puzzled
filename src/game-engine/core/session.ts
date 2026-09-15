@@ -1,4 +1,4 @@
-import type { GameSession, PieceGeometry, Point, PuzzleDefinition } from './types';
+import type { GameSession, PieceGeometry, Point, PuzzleDefinition, Size } from './types';
 
 import { DEFAULT_SNAP_THRESHOLD_RATIO } from './constants';
 
@@ -82,6 +82,16 @@ function withUpdatedPiece(
     pieceIndex === index ? updater(piece) : piece,
   );
 
+  return buildNextSession(session, pieces, now, elapsedMs);
+}
+
+/** Stamp a concrete piece state into the session and roll status/completion forward. */
+function buildNextSession(
+  session: GameSession,
+  pieces: GameSession['pieces'],
+  now: string,
+  elapsedMs: number,
+): GameSession {
   const next: GameSession = {
     ...session,
     pieces,
@@ -131,6 +141,27 @@ export interface DropPieceInput {
   elapsedMs: number;
   /** Absolute snap distance in board units. */
   snapThreshold: number;
+  /**
+   * Axis-aligned silhouette size (board units) per piece. When a piece locks, any
+   * still-loose piece whose bounds overlap the freshly locked slot is sent back to
+   * the tray — a mis-drop parked over a slot must not keep the correct piece from
+   * latching there. Absent, solving behaves exactly as before (no eviction).
+   */
+  boundsById?: Readonly<Record<string, Size>>;
+  /**
+   * Board height in board units. A piece overlapping a freshly locked slot is
+   * parked at `y = boardHeight` (the same boundary a board-piece dropped on the
+   * tray is parked on) so it returns to the tray.
+   */
+  boardHeight?: number;
+}
+
+/** Whether two axis-aligned boxes overlap with positive area (touching edges don't count). */
+function boxesIntersect(
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number },
+): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
 /**
@@ -144,6 +175,8 @@ export function dropPiece({
   now,
   elapsedMs,
   snapThreshold,
+  boundsById,
+  boardHeight,
 }: DropPieceInput): GameSession {
   const index = requirePieceIndex(session, pieceId);
   if (session.pieces[index].isLocked) {
@@ -151,19 +184,42 @@ export function dropPiece({
   }
 
   const shouldSnap = isWithinSnapDistance(position, solvedPosition, snapThreshold);
+  const lockedBounds = boundsById?.[pieceId];
 
-  return withUpdatedPiece(
-    session,
-    pieceId,
-    (piece) => ({
-      ...piece,
-      position: shouldSnap ? { ...solvedPosition } : { ...position },
-      isLocked: shouldSnap,
-      rotation: 0,
-    }),
-    now,
-    elapsedMs,
-  );
+  const pieces = session.pieces.map((piece, pieceIndex) => {
+    if (pieceIndex === index) {
+      return {
+        ...piece,
+        position: shouldSnap ? { ...solvedPosition } : { ...position },
+        isLocked: shouldSnap,
+        rotation: 0,
+      };
+    }
+
+    if (!shouldSnap || piece.isLocked || boardHeight == null || !lockedBounds) {
+      return piece;
+    }
+
+    const bounds = boundsById[piece.pieceId];
+    if (!bounds) {
+      return piece;
+    }
+
+    const overlaps =
+      boxesIntersect(
+        { x: piece.position.x, y: piece.position.y, width: bounds.width, height: bounds.height },
+        {
+          x: solvedPosition.x,
+          y: solvedPosition.y,
+          width: lockedBounds.width,
+          height: lockedBounds.height,
+        },
+      ) && piece.position.y < boardHeight;
+
+    return overlaps ? { ...piece, position: { x: 0, y: boardHeight } } : piece;
+  });
+
+  return buildNextSession(session, pieces, now, elapsedMs);
 }
 
 export function snapThresholdForCellSize(

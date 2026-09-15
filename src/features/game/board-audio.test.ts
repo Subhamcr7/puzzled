@@ -1,6 +1,6 @@
 import { emitCoinGained } from '@/data';
 
-import { configureAudioSettings, initBoardAudio, setSfxEnabled } from './board-audio';
+import { configureAudioSettings, initBoardAudio, playSfx, setSfxEnabled } from './board-audio';
 import { setUiTapHandler, playUiTap } from '@/shared/ui/ui-sound';
 
 /**
@@ -32,6 +32,8 @@ jest.mock('expo-audio', () => ({
 // `ensurePlayersLoaded` the created players are pickup, snap, complete,
 // buttonTap, place, coinGain, then the single ambient player.
 const BUTTON_TAP = 3;
+// Office-mate order after pickup, snap, complete: place is the fourth SFX player.
+const PLACE = 4;
 const COIN_GAIN = 5;
 const AMBIENT = 6;
 
@@ -114,5 +116,20 @@ describe('board-audio global UI sounds', () => {
 
     configureAudioSettings(SETTINGS_MUSIC);
     expect(ambientPlayer.play).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the snap placement clunk while enabled, and gates it with Sound', async () => {
+    await initBoardAudio(SETTINGS_ON);
+    const placePlayer = mockPlayers[PLACE];
+    expect(placePlayer).toBeTruthy();
+
+    placePlayer.play.mockClear();
+    playSfx('place');
+    expect(placePlayer.play).toHaveBeenCalledTimes(1);
+
+    setSfxEnabled(false);
+    placePlayer.play.mockClear();
+    playSfx('place');
+    expect(placePlayer.play).not.toHaveBeenCalled();
   });
 });

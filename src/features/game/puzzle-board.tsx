@@ -1210,7 +1210,6 @@ export function PuzzleBoard({
         // work on the same thread, which is what made the buzz arrive late or,
         // once another haptic had started, not at all.
         pickup();
-        playSfx('pickup');
         setDraggingId(id);
       }
     },
@@ -1363,7 +1362,22 @@ export function PuzzleBoard({
       const now = new Date().toISOString();
       const raised = raisePiece(sessionRef.current, id, now);
       const elapsedMs = getElapsedMsRef.current();
-      const common = { session: raised, pieceId: id, solvedPosition: solved, now, elapsedMs };
+      // Plain silhouette sizes per piece (no Skia objects), so a locked piece can
+      // evict any loose piece that overlaps its slot — see `dropPiece`.
+      const boundsById: Record<string, { width: number; height: number }> = {};
+      for (const boundsId of Object.keys(releaseGeometry)) {
+        const entry = releaseGeometry[boundsId];
+        boundsById[boundsId] = { width: entry.width, height: entry.height };
+      }
+      const common = {
+        session: raised,
+        pieceId: id,
+        solvedPosition: solved,
+        now,
+        elapsedMs,
+        boundsById,
+        boardHeight: boardSize.height,
+      };
 
       const placeThreshold = snapThreshold;
       if (!isWithinSnapDistance(clampedPosition, solved, placeThreshold)) {
