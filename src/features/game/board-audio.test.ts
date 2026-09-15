@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { emitCoinGained } from '@/data';
 
 import { configureAudioSettings, initBoardAudio, playSfx, setSfxEnabled } from './board-audio';
@@ -131,5 +134,34 @@ describe('board-audio global UI sounds', () => {
     placePlayer.play.mockClear();
     playSfx('place');
     expect(placePlayer.play).not.toHaveBeenCalled();
+  });
+
+  it('plays no SFX when only wired (no explicit play call)', async () => {
+    await initBoardAudio(SETTINGS_ON);
+    mockPlayers.forEach((p) => p.play.mockClear());
+
+    for (const p of mockPlayers) {
+      expect(p.play).not.toHaveBeenCalled();
+    }
+
+    playUiTap();
+    emitCoinGained(10);
+    expect(mockPlayers[BUTTON_TAP].play).toHaveBeenCalledTimes(1);
+    expect(mockPlayers[COIN_GAIN].play).toHaveBeenCalledTimes(1);
+    expect(mockPlayers[PLACE].play).not.toHaveBeenCalled();
+  });
+});
+
+describe('grab/drag path emits no audio (structural guard)', () => {
+  const source = readFileSync(join(__dirname, 'puzzle-board.tsx'), 'utf8');
+
+  it('contains no playSfx("pickup") anywhere in puzzle-board.tsx', () => {
+    const match = source.match(/playSfx\s*\(\s*['"]pickup['"]\s*\)/g);
+    expect(match).toBeNull();
+  });
+
+  it('fires playSfx("place") exactly once — the snap branch only', () => {
+    const match = source.match(/playSfx\s*\(\s*['"]place['"]\s*\)/g);
+    expect(match).toHaveLength(1);
   });
 });

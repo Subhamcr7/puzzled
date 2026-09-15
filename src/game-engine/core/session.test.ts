@@ -193,12 +193,15 @@ describe('game session primitives', () => {
       B: { width: 50, height: 50 },
       C: { width: 50, height: 50 },
       D: { width: 50, height: 50 },
+      E: { width: 50, height: 50 },
     };
     const BOARD_HEIGHT = 200;
     const SOLVED = {
       A: { x: 0, y: 0 },
-      B: { x: 100, y: 0 },
-      C: { x: 100, y: 100 },
+      B: { x: 150, y: 0 },
+      C: { x: 0, y: 150 },
+      D: { x: 150, y: 150 },
+      E: { x: 75, y: 75 },
     };
 
     const fresh = (): GameSession => ({
@@ -208,10 +211,11 @@ describe('game session primitives', () => {
       gridSize: 4,
       status: 'not-started',
       pieces: [
-        { pieceId: 'A', position: { x: 0, y: 0 }, rotation: 0, isLocked: false, zIndex: 0 },
-        { pieceId: 'B', position: { x: 100, y: 0 }, rotation: 0, isLocked: false, zIndex: 1 },
-        { pieceId: 'C', position: { x: 100, y: 100 }, rotation: 0, isLocked: false, zIndex: 2 },
-        { pieceId: 'D', position: { x: 150, y: 150 }, rotation: 0, isLocked: false, zIndex: 3 },
+        { pieceId: 'A', position: { ...SOLVED.A }, rotation: 0, isLocked: false, zIndex: 0 },
+        { pieceId: 'B', position: { ...SOLVED.B }, rotation: 0, isLocked: false, zIndex: 1 },
+        { pieceId: 'C', position: { ...SOLVED.C }, rotation: 0, isLocked: false, zIndex: 2 },
+        { pieceId: 'D', position: { ...SOLVED.D }, rotation: 0, isLocked: false, zIndex: 3 },
+        { pieceId: 'E', position: { ...SOLVED.E }, rotation: 0, isLocked: false, zIndex: 4 },
       ],
       startedAt: '2026-09-15T00:00:00.000Z',
       updatedAt: '2026-09-15T00:00:00.000Z',
@@ -245,63 +249,83 @@ describe('game session primitives', () => {
         boardHeight: BOARD_HEIGHT,
       });
 
-    it('evicts the covering loose piece from a corner slot to the tray', () => {
-      // B mis-dropped over A's corner slot (0..50, 0..50).
-      const session = withPosition(fresh(), 'B', { x: 10, y: 5 });
+    it('evicts covering loose piece from top-left corner to tray', () => {
+      const session = withPosition(fresh(), 'E', { x: 10, y: 5 });
       const next = dropNear(session, 'A');
 
-      const piece = next.pieces.find((entry) => entry.pieceId === 'A');
-      expect(piece?.isLocked).toBe(true);
-      expect(piece?.position).toEqual({ x: 0, y: 0 });
+      expect(next.pieces.find((p) => p.pieceId === 'A')?.isLocked).toBe(true);
+      expect(next.pieces.find((p) => p.pieceId === 'A')?.position).toEqual({ x: 0, y: 0 });
 
-      const covering = next.pieces.find((entry) => entry.pieceId === 'B');
+      const covering = next.pieces.find((p) => p.pieceId === 'E');
       expect(covering?.isLocked).toBe(false);
       expect(covering?.position).toEqual({ x: 0, y: BOARD_HEIGHT });
     });
 
-    it('evicts the covering loose piece from an edge slot to the tray', () => {
-      // D mis-dropped over B's top-edge slot (100..150, 0..50).
-      const session = withPosition(fresh(), 'D', { x: 105, y: 10 });
+    it('evicts covering loose piece from top-right corner to tray', () => {
+      const session = withPosition(fresh(), 'E', { x: 155, y: 5 });
       const next = dropNear(session, 'B');
 
-      const piece = next.pieces.find((entry) => entry.pieceId === 'B');
-      expect(piece?.isLocked).toBe(true);
+      expect(next.pieces.find((p) => p.pieceId === 'B')?.isLocked).toBe(true);
+      expect(next.pieces.find((p) => p.pieceId === 'B')?.position).toEqual({ x: 150, y: 0 });
 
-      const covering = next.pieces.find((entry) => entry.pieceId === 'D');
-      expect(covering?.position).toEqual({ x: 0, y: BOARD_HEIGHT });
-    });
-
-    it('evicts the covering loose piece from a centre slot to the tray', () => {
-      // A mis-dropped over C's centre slot (100..150, 100..150).
-      const session = withPosition(fresh(), 'A', { x: 110, y: 110 });
-      const next = dropNear(session, 'C');
-
-      const piece = next.pieces.find((entry) => entry.pieceId === 'C');
-      expect(piece?.isLocked).toBe(true);
-
-      const covering = next.pieces.find((entry) => entry.pieceId === 'A');
+      const covering = next.pieces.find((p) => p.pieceId === 'E');
       expect(covering?.isLocked).toBe(false);
       expect(covering?.position).toEqual({ x: 0, y: BOARD_HEIGHT });
     });
 
-    it('leaves a loose piece that does not overlap the locked slot where it is', () => {
-      // D rests at (150,150), clear of A's corner slot; it must not be touched.
+    it('evicts covering loose piece from bottom-left corner to tray', () => {
+      const session = withPosition(fresh(), 'E', { x: 10, y: 155 });
+      const next = dropNear(session, 'C');
+
+      expect(next.pieces.find((p) => p.pieceId === 'C')?.isLocked).toBe(true);
+      expect(next.pieces.find((p) => p.pieceId === 'C')?.position).toEqual({ x: 0, y: 150 });
+
+      const covering = next.pieces.find((p) => p.pieceId === 'E');
+      expect(covering?.isLocked).toBe(false);
+      expect(covering?.position).toEqual({ x: 0, y: BOARD_HEIGHT });
+    });
+
+    it('evicts covering loose piece from bottom-right corner to tray', () => {
+      const session = withPosition(fresh(), 'E', { x: 155, y: 155 });
+      const next = dropNear(session, 'D');
+
+      expect(next.pieces.find((p) => p.pieceId === 'D')?.isLocked).toBe(true);
+      expect(next.pieces.find((p) => p.pieceId === 'D')?.position).toEqual({ x: 150, y: 150 });
+
+      const covering = next.pieces.find((p) => p.pieceId === 'E');
+      expect(covering?.isLocked).toBe(false);
+      expect(covering?.position).toEqual({ x: 0, y: BOARD_HEIGHT });
+    });
+
+    it('evicts covering loose piece from centre (non-corner) slot to tray', () => {
+      const session = withPosition(fresh(), 'C', { x: 80, y: 80 });
+      const next = dropNear(session, 'E');
+
+      expect(next.pieces.find((p) => p.pieceId === 'E')?.isLocked).toBe(true);
+      expect(next.pieces.find((p) => p.pieceId === 'E')?.position).toEqual({ x: 75, y: 75 });
+
+      const covering = next.pieces.find((p) => p.pieceId === 'C');
+      expect(covering?.isLocked).toBe(false);
+      expect(covering?.position).toEqual({ x: 0, y: BOARD_HEIGHT });
+    });
+
+    it('leaves loose pieces that do not overlap the locked slot untouched', () => {
       const next = dropNear(fresh(), 'A');
 
-      const piece = next.pieces.find((entry) => entry.pieceId === 'A');
-      expect(piece?.isLocked).toBe(true);
-
-      const untouched = next.pieces.find((entry) => entry.pieceId === 'D');
-      expect(untouched?.isLocked).toBe(false);
-      expect(untouched?.position).toEqual({ x: 150, y: 150 });
+      expect(next.pieces.find((p) => p.pieceId === 'A')?.isLocked).toBe(true);
+      for (const id of ['B', 'C', 'D', 'E']) {
+        const piece = next.pieces.find((p) => p.pieceId === id);
+        expect(piece?.isLocked).toBe(false);
+        expect(piece?.position).toEqual(SOLVED[id as keyof typeof SOLVED]);
+      }
     });
 
     it('evicts nothing when the drop does not snap', () => {
-      const session = withPosition(fresh(), 'B', { x: 10, y: 5 });
+      const session = withPosition(fresh(), 'E', { x: 10, y: 5 });
       const next = dropPiece({
         session,
         pieceId: 'A',
-        position: { x: 250, y: 250 },
+        position: { x: 180, y: 180 },
         solvedPosition: SOLVED.A,
         now: '2026-09-15T00:00:01.000Z',
         elapsedMs: 1000,
@@ -310,24 +334,29 @@ describe('game session primitives', () => {
         boardHeight: BOARD_HEIGHT,
       });
 
-      expect(next.pieces.find((entry) => entry.pieceId === 'A')?.isLocked).toBe(false);
-      expect(next.pieces.find((entry) => entry.pieceId === 'B')?.position).toEqual({ x: 10, y: 5 });
+      expect(next.pieces.find((p) => p.pieceId === 'A')?.isLocked).toBe(false);
+      expect(next.pieces.find((p) => p.pieceId === 'E')?.position).toEqual({ x: 10, y: 5 });
     });
 
     it('does not evict a locked piece, even one adjacent to the locked slot', () => {
       let session = fresh();
       session = dropNear(session, 'B');
-      // D lies loose over A's slot; B is locked at its own slot beside it.
-      session = withPosition(session, 'D', { x: 10, y: 5 });
+      session = withPosition(session, 'E', { x: 10, y: 5 });
 
       const next = dropNear(session, 'A');
 
-      expect(next.pieces.find((entry) => entry.pieceId === 'A')?.isLocked).toBe(true);
-      expect(next.pieces.find((entry) => entry.pieceId === 'B')?.isLocked).toBe(true);
-      expect(next.pieces.find((entry) => entry.pieceId === 'B')?.position).toEqual({
-        x: 100,
-        y: 0,
-      });
+      expect(next.pieces.find((p) => p.pieceId === 'A')?.isLocked).toBe(true);
+      expect(next.pieces.find((p) => p.pieceId === 'B')?.isLocked).toBe(true);
+      expect(next.pieces.find((p) => p.pieceId === 'B')?.position).toEqual({ x: 150, y: 0 });
+    });
+
+    it('snap is the single lock event: re-dropping a locked piece changes nothing', () => {
+      let session = dropNear(fresh(), 'A');
+      session = dropNear(session, 'A');
+
+      const piece = session.pieces.find((p) => p.pieceId === 'A');
+      expect(piece?.isLocked).toBe(true);
+      expect(piece?.position).toEqual({ x: 0, y: 0 });
     });
   });
 });
