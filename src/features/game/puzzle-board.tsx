@@ -1204,6 +1204,13 @@ export function PuzzleBoard({
   const beginGrab = useCallback(
     (source: 0 | 1, index: number) => {
       const id = resolveGrabbedId(source, index);
+      // --- TEMPORARY DEBUG (remove before production) ---
+      console.log(
+        `[beginGrab] src=${source} idx=${index} id=${id ?? 'null'} ` +
+          `trayIds=${JSON.stringify(trayIdsRef.current)} ` +
+          `looseIds=${JSON.stringify(looseIdsRef.current)}`
+      );
+      // --- END TEMPORARY DEBUG ---
       if (id) {
         // Feedback before the state update. `setDraggingId` re-renders the board
         // — a Skia tree — and firing the haptic afterwards puts it behind that
