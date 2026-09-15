@@ -1204,13 +1204,6 @@ export function PuzzleBoard({
   const beginGrab = useCallback(
     (source: 0 | 1, index: number) => {
       const id = resolveGrabbedId(source, index);
-      // --- TEMPORARY DEBUG (remove before production) ---
-      console.log(
-        `[beginGrab] src=${source} idx=${index} id=${id ?? 'null'} ` +
-          `trayIds=${JSON.stringify(trayIdsRef.current)} ` +
-          `looseIds=${JSON.stringify(looseIdsRef.current)}`
-      );
-      // --- END TEMPORARY DEBUG ---
       if (id) {
         // Feedback before the state update. `setDraggingId` re-renders the board
         // — a Skia tree — and firing the haptic afterwards puts it behind that
@@ -1360,33 +1353,13 @@ export function PuzzleBoard({
       const position = { x: boardX - prepared.cx, y: boardY - prepared.cy };
       const solved = { x: prepared.solvedX, y: prepared.solvedY };
 
-      // Keep the piece's full extent (including jigsaw tabs) inside the board so
-      // edge pieces never hang off the frame after an imprecise drop. `position`
-      // is the piece origin; the silhouette spans (0,0)..(width,height), so clamp
-      // so position.x ∈ [0, boardSize.width - width] (and likewise for y).
+      // Clamp the piece so its full extent (including jigsaw tabs) stays inside
+      // the board for non-snapping drops.  Edge/corner pieces extend past the
+      // board boundary at their solved position, so clamping pushes them *away*
+      // from the solved slot — we therefore test snap on the RAW position first
+      // and only fall back to the clamped position when the piece is not close
+      // enough to snap.
       const clampedPosition = clampPieceToBoard(position, prepared, boardSize);
-
-      // --- TEMPORARY DEBUG (remove before production) ---
-      const _dbgDist = {
-        x: Math.abs(clampedPosition.x - solved.x),
-        y: Math.abs(clampedPosition.y - solved.y),
-      };
-      const _dbgSnap = isWithinSnapDistance(clampedPosition, solved, snapThreshold);
-      console.log(
-        `[releasePiece] id=${id} src=${source} idx=${index} ` +
-          `canvas=(${canvasX.toFixed(1)},${canvasY.toFixed(1)}) ` +
-          `cam=(${camTx.value.toFixed(1)},${camTy.value.toFixed(1)},${camScale.value.toFixed(2)}) ` +
-          `board=(${boardOffsetX.toFixed(1)},${boardOffsetY.toFixed(1)},${boardScale.toFixed(3)},pad=${boardPad}) ` +
-          `pos=(${position.x.toFixed(1)},${position.y.toFixed(1)}) ` +
-          `solved=(${solved.x.toFixed(1)},${solved.y.toFixed(1)}) ` +
-          `clamped=(${clampedPosition.x.toFixed(1)},${clampedPosition.y.toFixed(1)}) ` +
-          `dist=(${_dbgDist.x.toFixed(1)},${_dbgDist.y.toFixed(1)}) ` +
-          `thresh=${snapThreshold.toFixed(1)} snap=${_dbgSnap} ` +
-          `prepared=(${prepared.cx.toFixed(1)},${prepared.cy.toFixed(1)},w=${prepared.width.toFixed(1)},h=${prepared.height.toFixed(1)}) ` +
-          `boardZoneH=${boardZoneH.toFixed(1)} boardSize=(${boardSize.width},${boardSize.height}) ` +
-          `dragging=${draggingId ?? 'null'} looseIds=${JSON.stringify(looseIdsRef.current)}`
-      );
-      // --- END TEMPORARY DEBUG ---
 
       const now = new Date().toISOString();
       const raised = raisePiece(sessionRef.current, id, now);
@@ -1409,7 +1382,8 @@ export function PuzzleBoard({
       };
 
       const placeThreshold = snapThreshold;
-      if (!isWithinSnapDistance(clampedPosition, solved, placeThreshold)) {
+      const shouldSnap = isWithinSnapDistance(position, solved, placeThreshold);
+      if (!shouldSnap) {
         // Out of range on the board: leave the piece exactly where it was released so
         // it can be nudged and re-grabbed. Released over the tray, it returns to the
         // tray instead (its position never changes, so it's simply back where it was).
@@ -1448,7 +1422,7 @@ export function PuzzleBoard({
       }
 
       onSessionChangeRef.current(
-        dropPiece({ ...common, position: clampedPosition, snapThreshold: placeThreshold }),
+        dropPiece({ ...common, position, snapThreshold: placeThreshold }),
       );
       impact('medium');
       playSfx('place');
