@@ -69,7 +69,15 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # The action defaults to installing `tools platform-tools`, but Google has
+      # removed the legacy `tools` package from the SDK repository, so that default
+      # now fails sdkmanager inline (a build that worked yesterday started failing
+      # when the repo stopped serving it). Scoping to `platform-tools` installs only
+      # what the build actually needs; `--licenses` still runs, which is what lets
+      # Gradle auto-install the platforms/build-tools the generated project pins.
       - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
 
       # `android/` is gitignored, so the native project is generated here. --clean
       # guarantees the output matches app.json rather than any stale artefacts.
